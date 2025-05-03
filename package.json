@@ -1,0 +1,21 @@
+{
+  "name": "nanogpu",
+  "version": "1.0.0",
+  "description": "A minimal framework for WebGPU in the browser",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "wgpu-matrix": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@webgpu/types": "^0.1.60",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
