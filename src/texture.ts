@@ -8,6 +8,7 @@ export abstract class Texture {
     abstract dispose(): void;
     abstract get width(): number;
     abstract get height(): number;
+    abstract get sampler(): GPUSampler;
 }
 
 export class DefaultTexture extends Texture {
@@ -15,6 +16,7 @@ export class DefaultTexture extends Texture {
 
     private _texture: GPUTexture | null = null;
     private _textureView: GPUTextureView | null = null;
+    private _sampler: GPUSampler | null = null;
     private _pixelData: Uint8Array = new Uint8Array([255, 255, 255, 255]);
 
     constructor() {
@@ -45,6 +47,13 @@ export class DefaultTexture extends Texture {
         return this._textureView;
     }
 
+    get sampler(): GPUSampler {
+        if (!this._sampler) {
+            throw new Error("Sampler not created");
+        }
+        return this._sampler;
+    }
+
     upload(device: GPUDevice): void {
         if (this._texture) {
             return;
@@ -57,6 +66,11 @@ export class DefaultTexture extends Texture {
             { offset: 0, bytesPerRow: 4, rowsPerImage: 1 },
             { width: 1, height: 1, depthOrArrayLayers: 1 },
         );
+
+        this._sampler = device.createSampler({
+            magFilter: "linear",
+            minFilter: "linear",
+        });
     }
 
     dispose(): void {
@@ -75,6 +89,7 @@ export class ImageTexture extends Texture {
     private _texture: GPUTexture | null = null;
     private _textureView: GPUTextureView | null = null;
     private _imagedata: ImageBitmap | null = null;
+    private _sampler: GPUSampler | null = null;
 
     constructor(imageSrc: string) {
         super();
@@ -126,6 +141,13 @@ export class ImageTexture extends Texture {
         return this._textureView;
     }
 
+    get sampler(): GPUSampler {
+        if (!this._sampler) {
+            throw new Error("Sampler not created");
+        }
+        return this._sampler;
+    }
+
     upload(device: GPUDevice): void {
         if (this._texture) {
             return;
@@ -141,6 +163,11 @@ export class ImageTexture extends Texture {
             { texture: this._texture, origin: { x: 0, y: 0 } },
             { width: this._width, height: this._height, depthOrArrayLayers: 1 },
         );
+
+        this._sampler = device.createSampler({
+            magFilter: "linear",
+            minFilter: "linear",
+        });
     }
 
     dispose(): void {

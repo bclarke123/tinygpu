@@ -1,3 +1,9 @@
+import { Geometry } from "./geometry/geometry";
+import { GeometryFactory } from "./geometry/geometry-factory";
+import { Material } from "./materials/material";
+import { MaterialFactory } from "./materials/material-factory";
+import { Mesh } from "./mesh";
+
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
 }
@@ -93,15 +99,47 @@ export class Renderer {
     return shaderModule;
   }
 
-  createPipeline(shaderModule: GPUShaderModule): GPURenderPipeline {
+  createBindGroup(
+    bindGroupLayout: GPUBindGroupLayout,
+    entries: GPUBindGroupEntry[],
+  ): GPUBindGroup {
+    const bindGroup = this.device!.createBindGroup({
+      layout: bindGroupLayout,
+      entries,
+    });
+
+    return bindGroup;
+  }
+
+  createBindGroupLayout(
+    entries: GPUBindGroupLayoutEntry[],
+  ): GPUBindGroupLayout {
+    const bindGroupLayout = this.device!.createBindGroupLayout({
+      label: "basic-material-bind-group-layout",
+      entries,
+    });
+    return bindGroupLayout;
+  }
+
+  private _pipelineCache: Map<string, GPURenderPipeline> = new Map();
+  createPipeline(geometry: Geometry, material: Material): GPURenderPipeline {
+
+    const cacheKey = `${material.cacheKey}-${geometry.cacheKey}`;
+    if (this._pipelineCache.has(cacheKey)) {
+      return this._pipelineCache.get(cacheKey)!;
+    }
+
+    const shaderCode = material.shaderCode;
+    const bufferLayout = geometry.bufferLayout;
+
     const pipeline = this.device!.createRenderPipeline({
       layout: "auto",
       vertex: {
-        module: shaderModule,
-        buffers: [],
+        module: shaderCode,
+        buffers: bufferLayout
       },
       fragment: {
-        module: shaderModule,
+        module: shaderCode,
         targets: [
           {
             format: this.format,
@@ -109,6 +147,9 @@ export class Renderer {
         ],
       },
     });
+
+    this._pipelineCache.set(cacheKey, pipeline);
+    console.log("Pipeline created", cacheKey);
 
     return pipeline;
   }
@@ -141,5 +182,24 @@ export class Renderer {
     passEncoder.end();
 
     this.device!.queue.submit([commandEncoder.finish()]);
+  }
+
+  private _materialFactory: MaterialFactory | null = null;
+  get materialFactory(): MaterialFactory {
+    this._materialFactory ??= new MaterialFactory(this);
+    return this._materialFactory;
+  }
+
+  private _geometryFactory: GeometryFactory | null = null;
+  get geometryFactory(): GeometryFactory {
+    this._geometryFactory ??= new GeometryFactory(this);
+    return this._geometryFactory;
+  }
+
+  createMesh(geo: Geometry, mat: Material): Mesh {
+    const pipeline = this.createPipeline(geo, mat);
+    const mesh = new Mesh(mat, geo, pipeline);
+
+    return mesh;
   }
 }
