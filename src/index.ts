@@ -10,8 +10,6 @@ export class Renderer {
     context?: GPUCanvasContext;
     format: GPUTextureFormat = "bgra8unorm";
 
-    // pipeline?: GPURenderPipeline;
-    // bindGroup?: GPUBindGroup;
     commandEncoder?: GPUCommandEncoder;
     queue?: GPUQueue;
 
@@ -54,7 +52,6 @@ export class Renderer {
         });
 
         console.log("Canvas initialized");
-
     }
 
     render() {
