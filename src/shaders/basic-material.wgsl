@@ -7,12 +7,14 @@ struct SceneUniforms {
 
 struct Uniforms {
   model: mat4x4<f32>,
-  color: vec4<f32>,
-  map: texture_2d<f32>,
+  color: vec4<f32>
 }
 
 @group(0) @binding(0) var<uniform> scene_uniforms: SceneUniforms;
+
 @group(1) @binding(0) var<uniform> uniforms: Uniforms;
+@group(1) @binding(1) var tex_sampler: sampler;
+@group(1) @binding(2) var tex_map: texture_2d<f32>;
 
 struct VSOut {
     @builtin(position) position: vec4<f32>,
