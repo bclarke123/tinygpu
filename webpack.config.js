@@ -11,6 +11,11 @@ module.exports = {
         use: "ts-loader",
         exclude: /node_modules/,
       },
+      {
+        test: /\.(vert|frag|wgsl)$/,
+        use: "raw-loader",
+        exclude: /node_modules/,
+      },
     ],
   },
   resolve: {
