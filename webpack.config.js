@@ -1,27 +1,27 @@
-const path = require('path');
+const path = require("path");
 
 module.exports = {
-  entry: [ 
-    './src/index.ts',
-    './test/index.html'
-  ],
-  mode: 'development',
-  devtool: 'inline-source-map',
+  entry: ["./src/index.ts"],
+  mode: "development",
+  devtool: "inline-source-map",
   module: {
     rules: [
       {
         test: /\.tsx?$/,
-        use: 'ts-loader',
+        use: "ts-loader",
         exclude: /node_modules/,
       },
     ],
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js'],
+    extensions: [".tsx", ".ts", ".js"],
   },
   output: {
     clean: true,
-    filename: 'index.js',
-    path: path.resolve(__dirname, 'dist'),
+    filename: "index.js",
+    path: path.resolve(__dirname, "dist"),
+    library: "tinygpu",
+    libraryTarget: "umd",
+    umdNamedDefine: true,
   },
 };
