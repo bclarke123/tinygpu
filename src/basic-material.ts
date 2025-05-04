@@ -1,6 +1,8 @@
 import { Color } from "./color";
 import { DefaultTexture, Texture } from "./texture";
 
+import basicMaterialShader from "./shaders/basic-material.wgsl";
+
 export interface BasicMaterialOptions {
   color?: Color;
   map?: Texture;
@@ -9,6 +11,8 @@ export interface BasicMaterialOptions {
 export class BasicMaterial {
   private _color: Color;
   private _map: Texture | null;
+  private _bindGroup: GPUBindGroup | null = null;
+  private _module: GPUShaderModule | null = null;
 
   constructor(options: BasicMaterialOptions = {}) {
     this._color = options.color || new Color(1, 1, 1);
@@ -29,5 +33,18 @@ export class BasicMaterial {
 
   set map(value: Texture | null) {
     this._map = value;
+  }
+
+  upload(device: GPUDevice): void {
+    if (this._map) {
+      this._map.upload(device);
+    }
+
+    if (!this._module) {
+      this._module = device.createShaderModule({
+        code: basicMaterialShader,
+      });
+    }
+
   }
 }

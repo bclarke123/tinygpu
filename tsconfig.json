@@ -10,7 +10,6 @@
       "./node_modules/@webgpu/types"
     ],
     "rootDir": "./src",
-    "outDir": "./dist",
-    "strict": true,
+    "outDir": "./dist"
   }
 }
