@@ -1,39 +1,34 @@
-import { mat4, Mat4, vec3 } from "wgpu-matrix";
+import { vec3 } from "wgpu-matrix";
 import { packUniforms, uploadUniformBuffer } from "./uniform-utils";
-import { Mesh } from "./mesh";
+import { Transform } from "./transform";
+import { Camera } from "./camera/camera";
 
-export class Scene {
+export class Scene extends Transform {
     private _device: GPUDevice;
     private _uniformBuffer?: GPUBuffer;
 
     private _bindGroupLayout?: GPUBindGroupLayout;
     private _bindGroup?: GPUBindGroup;
 
-    private _children: Mesh[] = [];
-
-    projectionMatrix: Mat4;
-    viewMatrix: Mat4;
-
     constructor(device: GPUDevice) {
+        super();
         this._device = device;
-        this.projectionMatrix = mat4.identity();
-        this.viewMatrix = mat4.identity();
     }
 
-    get uniformBuffer(): ArrayBuffer {
+    uniformBuffer(camera: Camera): ArrayBuffer {
         const uniforms = [
-            { name: "projection matrix", value: this.projectionMatrix },
-            { name: "view matrix", value: this.viewMatrix },
-            { name: "camera position", value: vec3.create() },
+            { name: "projection matrix", value: camera.projectionMatrix },
+            { name: "view matrix", value: camera.viewMatrix },
+            { name: "camera position", value: camera.position },
             { name: "time", value: 0 },
         ];
 
         return packUniforms(uniforms);
     }
 
-    uploadUniforms(): GPUBuffer {
+    uploadUniforms(camera: Camera): GPUBuffer {
         this._uniformBuffer = uploadUniformBuffer(
-            this.uniformBuffer,
+            this.uniformBuffer(camera),
             this._device,
             "Material uniform buffer",
             this._uniformBuffer,
@@ -66,8 +61,8 @@ export class Scene {
         return this._bindGroupLayout;
     }
 
-    get bindGroup(): GPUBindGroup {
-        const uniforms = this.uploadUniforms();
+    getBindGroup(camera: Camera): GPUBindGroup {
+        const uniforms = this.uploadUniforms(camera);
 
         if (!this._bindGroup) {
 
@@ -85,24 +80,5 @@ export class Scene {
         }
 
         return this._bindGroup;
-    }
-
-    get children(): Mesh[] {
-        return this._children;
-    }
-
-    add(mesh: Mesh) {
-        this._children.push(mesh);
-    }
-
-    remove(mesh: Mesh) {
-        const index = this._children.indexOf(mesh);
-        if (index > -1) {
-            this._children.splice(index, 1);
-        }
-    }
-
-    clear() {
-        this._children = [];
     }
 }
