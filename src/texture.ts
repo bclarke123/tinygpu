@@ -165,7 +165,7 @@ export class ImageTexture extends Texture {
 
     this._texture = device.createTexture(this.descriptor);
     device.queue.copyExternalImageToTexture(
-      { source: this._imagedata, origin: { x: 0, y: 0 } },
+      { source: this._imagedata, origin: { x: 0, y: 0 }, flipY: true },
       { texture: this._texture, origin: { x: 0, y: 0 } },
       { width: this._width, height: this._height, depthOrArrayLayers: 1 },
     );
