@@ -1,8 +1,10 @@
+import { mat4, vec3 } from "wgpu-matrix";
 import { Geometry } from "./geometry/geometry";
 import { GeometryFactory } from "./geometry/geometry-factory";
 import { Material } from "./materials/material";
 import { MaterialFactory } from "./materials/material-factory";
 import { Mesh } from "./mesh";
+import { packUniforms, uploadUniformBuffer } from "./uniform-utils";
 
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
@@ -59,10 +61,6 @@ export class Renderer {
     });
 
     console.log("Canvas initialized");
-  }
-
-  render() {
-    console.log("Rendering...");
   }
 
   createBuffer<T extends Float32Array | Uint16Array | Uint8Array>(
@@ -123,7 +121,6 @@ export class Renderer {
 
   private _pipelineCache: Map<string, GPURenderPipeline> = new Map();
   createPipeline(geometry: Geometry, material: Material): GPURenderPipeline {
-
     const cacheKey = `${material.cacheKey}-${geometry.cacheKey}`;
     if (this._pipelineCache.has(cacheKey)) {
       return this._pipelineCache.get(cacheKey)!;
@@ -136,7 +133,7 @@ export class Renderer {
       layout: "auto",
       vertex: {
         module: shaderCode,
-        buffers: bufferLayout
+        buffers: bufferLayout,
       },
       fragment: {
         module: shaderCode,
@@ -154,7 +151,7 @@ export class Renderer {
     return pipeline;
   }
 
-  encodeCommands(pipeline: GPURenderPipeline) {
+  render(mesh: Mesh) {
     const tex = this.context!.getCurrentTexture();
     const view = tex.createView();
 
@@ -172,13 +169,44 @@ export class Renderer {
       ],
     };
 
+    const sceneUniforms = [
+      { name: "projection matrix", value: mat4.identity() },
+      { name: "view matrix", value: mat4.identity() },
+      { name: "camera position", value: vec3.create() },
+      { name: "time", value: 0 },
+    ];
+
+    const sceneArr = packUniforms(sceneUniforms);
+    const sceneBuf = uploadUniformBuffer(sceneArr, this.device);
+
+    const sceneBindGroup = this.device.createBindGroup({
+      layout: mesh.pipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: sceneBuf },
+        },
+      ],
+    });
+
+    const matBindGroupDescriptor = mesh.material.bindGroupDescriptor(
+      mesh.pipeline.getBindGroupLayout(1),
+    );
+
+    const matBindGroup = this.device.createBindGroup(matBindGroupDescriptor);
+
     const commandEncoder = this.device!.createCommandEncoder();
 
     const passEncoder = commandEncoder.beginRenderPass(renderPassDesc);
-    passEncoder.setPipeline(pipeline);
+    passEncoder.setPipeline(mesh.pipeline);
     passEncoder.setViewport(0, 0, width, height, 0, 1);
     passEncoder.setScissorRect(0, 0, width, height);
-    passEncoder.draw(6);
+    passEncoder.setVertexBuffer(0, mesh.geometry.vertexBuffer);
+    passEncoder.setVertexBuffer(1, mesh.geometry.uvBuffer);
+    passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
+    passEncoder.setBindGroup(0, sceneBindGroup);
+    passEncoder.setBindGroup(1, matBindGroup);
+    passEncoder.drawIndexed(mesh.geometry.indexCount);
     passEncoder.end();
 
     this.device!.queue.submit([commandEncoder.finish()]);
