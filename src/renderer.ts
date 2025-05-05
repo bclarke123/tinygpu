@@ -189,8 +189,14 @@ export class Renderer {
       ],
     });
 
-    const matBindGroupDescriptor = mesh.material.bindGroupDescriptor(
+    const modelBindGroupDescriptor = mesh.bindGroupDescriptor(
       mesh.pipeline.getBindGroupLayout(1),
+    );
+
+    const modelBindGroup = this.device.createBindGroup(modelBindGroupDescriptor);
+
+    const matBindGroupDescriptor = mesh.material.bindGroupDescriptor(
+      mesh.pipeline.getBindGroupLayout(2),
     );
 
     const matBindGroup = this.device.createBindGroup(matBindGroupDescriptor);
@@ -205,7 +211,8 @@ export class Renderer {
     passEncoder.setVertexBuffer(1, mesh.geometry.uvBuffer);
     passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
     passEncoder.setBindGroup(0, sceneBindGroup);
-    passEncoder.setBindGroup(1, matBindGroup);
+    passEncoder.setBindGroup(1, modelBindGroup);
+    passEncoder.setBindGroup(2, matBindGroup);
     passEncoder.drawIndexed(mesh.geometry.indexCount);
     passEncoder.end();
 
@@ -226,7 +233,7 @@ export class Renderer {
 
   createMesh(geo: Geometry, mat: Material): Mesh {
     const pipeline = this.createPipeline(geo, mat);
-    const mesh = new Mesh(mat, geo, pipeline);
+    const mesh = new Mesh(this.device, mat, geo, pipeline);
 
     return mesh;
   }
