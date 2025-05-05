@@ -1,3 +1,7 @@
+const BG_SCENE: u32 = 0;
+const BG_MODEL: u32 = 1;
+const BG_UNIFORMS: u32 = 2;
+
 struct SceneUniforms {
   projection: mat4x4<f32>,
   view: mat4x4<f32>,
@@ -9,15 +13,16 @@ struct ModelUniforms {
   model: mat4x4<f32>,
 }
 
+@group(BG_SCENE) @binding(0) var<uniform> scene_uniforms: SceneUniforms;
+@group(BG_MODEL) @binding(0) var<uniform> model_uniforms: ModelUniforms;
+
 struct Uniforms {
   color: vec4<f32>
 }
 
-@group(0) @binding(0) var<uniform> scene_uniforms: SceneUniforms;
-@group(1) @binding(0) var<uniform> model_uniforms: ModelUniforms;
-@group(2) @binding(0) var<uniform> uniforms: Uniforms;
-@group(2) @binding(1) var tex_sampler: sampler;
-@group(2) @binding(2) var tex_map: texture_2d<f32>;
+@group(BG_UNIFORMS) @binding(0) var<uniform> uniforms: Uniforms;
+@group(BG_UNIFORMS) @binding(1) var tex_sampler: sampler;
+@group(BG_UNIFORMS) @binding(2) var tex_map: texture_2d<f32>;
 
 struct VSOut {
     @builtin(position) position: vec4<f32>,
