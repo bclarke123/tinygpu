@@ -5,6 +5,7 @@ import { Material } from "./materials/material";
 import { MaterialFactory } from "./materials/material-factory";
 import { Mesh } from "./mesh";
 import { packUniforms, uploadUniformBuffer } from "./uniform-utils";
+import { Scene } from "./scene";
 
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
@@ -20,6 +21,8 @@ export class Renderer {
 
   commandEncoder?: GPUCommandEncoder;
   queue?: GPUQueue;
+
+  private _pipelineCache: Map<string, GPURenderPipeline> = new Map();
 
   constructor(options: RendererOptions = {}) {
     this.canvas ??= options.canvas;
@@ -89,48 +92,26 @@ export class Renderer {
     return buffer;
   }
 
-  compileShader(code: string): GPUShaderModule {
-    const shaderModule = this.device!.createShaderModule({
-      code,
-    });
-
-    return shaderModule;
-  }
-
-  createBindGroup(
-    bindGroupLayout: GPUBindGroupLayout,
-    entries: GPUBindGroupEntry[],
-  ): GPUBindGroup {
-    const bindGroup = this.device!.createBindGroup({
-      layout: bindGroupLayout,
-      entries,
-    });
-
-    return bindGroup;
-  }
-
-  createBindGroupLayout(
-    entries: GPUBindGroupLayoutEntry[],
-  ): GPUBindGroupLayout {
-    const bindGroupLayout = this.device!.createBindGroupLayout({
-      label: "basic-material-bind-group-layout",
-      entries,
-    });
-    return bindGroupLayout;
-  }
-
-  private _pipelineCache: Map<string, GPURenderPipeline> = new Map();
-  createPipeline(geometry: Geometry, material: Material): GPURenderPipeline {
-    const cacheKey = `${material.cacheKey}-${geometry.cacheKey}`;
+  pipelineFor(scene: Scene, mesh: Mesh): GPURenderPipeline {
+    const cacheKey = mesh.cacheKey;
     if (this._pipelineCache.has(cacheKey)) {
       return this._pipelineCache.get(cacheKey)!;
     }
 
-    const shaderCode = material.shaderCode;
-    const bufferLayout = geometry.bufferLayout;
+    const shaderCode = mesh.material.shaderCode;
+    const bufferLayout = mesh.geometry.bufferLayout;
+
+    const layout = this.device!.createPipelineLayout({
+      label: "Pipeline Layout",
+      bindGroupLayouts: [
+        scene.bindGroupLayout,
+        mesh.bindGroupLayout,
+        mesh.material.bindGroupLayout,
+      ]
+    });
 
     const pipeline = this.device!.createRenderPipeline({
-      layout: "auto",
+      layout,
       vertex: {
         module: shaderCode,
         buffers: bufferLayout,
@@ -151,7 +132,7 @@ export class Renderer {
     return pipeline;
   }
 
-  render(mesh: Mesh) {
+  render(scene: Scene) {
     const tex = this.context!.getCurrentTexture();
     const view = tex.createView();
 
@@ -169,53 +150,26 @@ export class Renderer {
       ],
     };
 
-    const sceneUniforms = [
-      { name: "projection matrix", value: mat4.identity() },
-      { name: "view matrix", value: mat4.identity() },
-      { name: "camera position", value: vec3.create() },
-      { name: "time", value: 0 },
-    ];
-
-    const sceneArr = packUniforms(sceneUniforms);
-    const sceneBuf = uploadUniformBuffer(sceneArr, this.device);
-
-    const sceneBindGroup = this.device.createBindGroup({
-      layout: mesh.pipeline.getBindGroupLayout(0),
-      entries: [
-        {
-          binding: 0,
-          resource: { buffer: sceneBuf },
-        },
-      ],
-    });
-
-    const modelBindGroupDescriptor = mesh.bindGroupDescriptor(
-      mesh.pipeline.getBindGroupLayout(1),
-    );
-
-    const modelBindGroup = this.device.createBindGroup(modelBindGroupDescriptor);
-
-    const matBindGroupDescriptor = mesh.material.bindGroupDescriptor(
-      mesh.pipeline.getBindGroupLayout(2),
-    );
-
-    const matBindGroup = this.device.createBindGroup(matBindGroupDescriptor);
-
-    const commandEncoder = this.device!.createCommandEncoder();
-
+    const commandEncoder = this.device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass(renderPassDesc);
-    passEncoder.setPipeline(mesh.pipeline);
     passEncoder.setViewport(0, 0, width, height, 0, 1);
     passEncoder.setScissorRect(0, 0, width, height);
-    passEncoder.setVertexBuffer(0, mesh.geometry.vertexBuffer);
-    passEncoder.setVertexBuffer(1, mesh.geometry.uvBuffer);
-    passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
-    passEncoder.setBindGroup(0, sceneBindGroup);
-    passEncoder.setBindGroup(1, modelBindGroup);
-    passEncoder.setBindGroup(2, matBindGroup);
-    passEncoder.drawIndexed(mesh.geometry.indexCount);
-    passEncoder.end();
 
+    passEncoder.setBindGroup(0, scene.bindGroup);
+
+    for (const mesh of scene.children) {
+      const pipeline = this.pipelineFor(scene, mesh);
+
+      passEncoder.setPipeline(pipeline);
+      passEncoder.setVertexBuffer(0, mesh.geometry.vertexBuffer);
+      passEncoder.setVertexBuffer(1, mesh.geometry.uvBuffer);
+      passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
+      passEncoder.setBindGroup(1, mesh.bindGroup);
+      passEncoder.setBindGroup(2, mesh.material.bindGroup);
+      passEncoder.drawIndexed(mesh.geometry.indexCount);
+    }
+
+    passEncoder.end();
     this.device!.queue.submit([commandEncoder.finish()]);
   }
 
@@ -232,9 +186,13 @@ export class Renderer {
   }
 
   createMesh(geo: Geometry, mat: Material): Mesh {
-    const pipeline = this.createPipeline(geo, mat);
-    const mesh = new Mesh(this.device, mat, geo, pipeline);
+    const mesh = new Mesh(this.device, mat, geo);
 
     return mesh;
+  }
+
+  createScene(): Scene {
+    const scene = new Scene(this.device);
+    return scene;
   }
 }
