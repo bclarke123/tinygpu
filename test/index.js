@@ -1,5 +1,8 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const canvas = document.getElementById("canvas");
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  
   const renderer = new tinygpu.Renderer({ canvas });
   await renderer.init();
 
