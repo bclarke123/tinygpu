@@ -1,3 +1,4 @@
+import { Camera } from "./camera/camera";
 import { Geometry } from "./geometry/geometry";
 import { GeometryFactory } from "./geometry/geometry-factory";
 import { Material } from "./materials/material";
@@ -130,7 +131,7 @@ export class Renderer {
     return pipeline;
   }
 
-  render(scene: Scene) {
+  render(scene: Scene, camera: Camera) {
     const tex = this.context!.getCurrentTexture();
     const view = tex.createView();
 
@@ -153,19 +154,24 @@ export class Renderer {
     passEncoder.setViewport(0, 0, width, height, 0, 1);
     passEncoder.setScissorRect(0, 0, width, height);
 
-    passEncoder.setBindGroup(0, scene.bindGroup);
+    const sceneBindGroup = scene.getBindGroup(camera);
+    passEncoder.setBindGroup(0, sceneBindGroup);
 
-    for (const mesh of scene.children) {
-      const pipeline = this.pipelineFor(scene, mesh);
+    scene.traverse((obj) => {
+      if (obj instanceof Mesh) {
+        const mesh = obj;
 
-      passEncoder.setPipeline(pipeline);
-      passEncoder.setVertexBuffer(0, mesh.geometry.vertexBuffer);
-      passEncoder.setVertexBuffer(1, mesh.geometry.uvBuffer);
-      passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
-      passEncoder.setBindGroup(1, mesh.bindGroup);
-      passEncoder.setBindGroup(2, mesh.material.bindGroup);
-      passEncoder.drawIndexed(mesh.geometry.indexCount);
-    }
+        const pipeline = this.pipelineFor(scene, mesh);
+
+        passEncoder.setPipeline(pipeline);
+        passEncoder.setVertexBuffer(0, mesh.geometry.vertexBuffer);
+        passEncoder.setVertexBuffer(1, mesh.geometry.uvBuffer);
+        passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
+        passEncoder.setBindGroup(1, mesh.bindGroup);
+        passEncoder.setBindGroup(2, mesh.material.bindGroup);
+        passEncoder.drawIndexed(mesh.geometry.indexCount);
+      }
+    });
 
     passEncoder.end();
     this.device!.queue.submit([commandEncoder.finish()]);
