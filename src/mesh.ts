@@ -6,19 +6,23 @@ import { packUniforms, uploadUniformBuffer } from "./uniform-utils";
 export class Mesh {
     material: Material;
     geometry: Geometry;
-    pipeline: GPURenderPipeline;
     matrix: Mat4;
     uniformArr: ArrayBuffer;
 
     _device: GPUDevice;
     _uniformBuffer?: GPUBuffer;
+    _bindGroupLayout?: GPUBindGroupLayout;
+    _bindGroup?: GPUBindGroup;
 
-    constructor(device: GPUDevice, mat: Material, geo: Geometry, pipeline: GPURenderPipeline) {
+    constructor(device: GPUDevice, mat: Material, geo: Geometry) {
         this._device = device;
         this.material = mat;
         this.geometry = geo;
-        this.pipeline = pipeline;
         this.matrix = mat4.identity();
+    }
+
+    get cacheKey(): string {
+        return this.geometry.cacheKey + this.material.cacheKey;
     }
 
     get uniformBuffer(): ArrayBuffer {
@@ -41,11 +45,34 @@ export class Mesh {
         return this._uniformBuffer;
     }
 
-    bindGroupDescriptor(layout: GPUBindGroupLayout): GPUBindGroupDescriptor {
+    get bindGroupLayout(): GPUBindGroupLayout {
+        const layoutDescriptor: GPUBindGroupLayoutDescriptor = {
+            label: "Mesh Uniforms BindGroup Layout",
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    buffer: {
+                        type: 'uniform',
+                        hasDynamicOffset: false,
+                        minBindingSize: 0
+                    }
+                }
+            ]
+        };
+
+        const meshBindGroupLayout = this._device.createBindGroupLayout(layoutDescriptor);
+
+        console.log("Created Mesh BindGroupLayout:", meshBindGroupLayout);
+        return meshBindGroupLayout;
+    }
+
+    get bindGroup(): GPUBindGroup {
         const uniforms = this.uploadUniforms();
 
-        return {
-            layout,
+        const layoutDescriptor: GPUBindGroupDescriptor = {
+            label: "Mesh BindGroup",
+            layout: this.bindGroupLayout,
             entries: [
                 {
                     binding: 0,
@@ -53,5 +80,7 @@ export class Mesh {
                 }
             ]
         }
+
+        return this._device.createBindGroup(layoutDescriptor);
     }
 }
