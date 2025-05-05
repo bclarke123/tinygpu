@@ -1,16 +1,21 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    const canvas = document.getElementById("canvas");
-    const renderer = new tinygpu.Renderer({ canvas });
-    await renderer.init();
+  const canvas = document.getElementById("canvas");
+  const renderer = new tinygpu.Renderer({ canvas });
+  await renderer.init();
 
-    console.log(renderer.device);
+  const tex = new tinygpu.ImageTexture(
+    "https://assets.codepen.io/1082534/141601-2560x1600-desktop-hd-ocean-wallpaper-image.jpg",
+  );
 
-    const mat = renderer.materialFactory.createBasicMaterial({ color: new tinygpu.Color(1, 0, 0, 1) });
-    const geo = renderer.geometryFactory.createBigTriangle();
+  await tex.load();
 
-    const mesh = renderer.createMesh(geo, mat);
+  const mat = renderer.materialFactory.createBasicMaterial({
+    color: new tinygpu.Color(1, 1, 1, 1),
+    map: tex,
+  });
+  const geo = renderer.geometryFactory.createBigTriangle();
 
-    console.log(mesh);
+  const mesh = renderer.createMesh(geo, mat);
 
-    // renderer.encodeCommands(pipeline);
+  renderer.render(mesh);
 });
