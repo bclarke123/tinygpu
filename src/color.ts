@@ -1,4 +1,4 @@
-import { vec4 } from "wgpu-matrix";
+import { Vec4, vec4 } from "wgpu-matrix";
 
 export class Color {
   r: number;
@@ -6,7 +6,7 @@ export class Color {
   b: number;
   a: number;
 
-  buffer?: Float32Array;
+  buffer?: Vec4;
 
   constructor(r: number, g: number, b: number, a: number = 1) {
     this.r = r;
