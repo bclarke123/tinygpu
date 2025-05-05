@@ -3,7 +3,6 @@ import { DefaultTexture, Texture } from "../texture";
 
 import basicMaterialShader from "../shaders/basic-material.wgsl";
 import { Material } from "./material";
-import { mat4 } from "wgpu-matrix";
 import { packUniforms } from "../uniform-utils";
 
 export interface BasicMaterialOptions {
@@ -45,11 +44,38 @@ export class BasicMaterial extends Material {
     return this._uniformArr;
   }
 
-  bindGroupDescriptor(layout: GPUBindGroupLayout): GPUBindGroupDescriptor {
+  get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor {
+    return {
+      label: "Basic Material BindGroup Layout",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: {
+            type: "uniform",
+            hasDynamicOffset: false,
+            minBindingSize: 0,
+          },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: { type: "filtering" },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: { sampleType: "float", viewDimension: "2d", multisampled: false },
+        },
+      ],
+    };
+  }
+
+  get bindGroupDescriptor(): GPUBindGroupDescriptor {
     const uniforms = this.uploadUniforms();
 
     return {
-      layout,
+      layout: this.bindGroupLayout,
       entries: [
         {
           binding: 0,
