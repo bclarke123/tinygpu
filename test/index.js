@@ -5,6 +5,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   const renderer = new tinygpu.Renderer({ canvas });
   await renderer.init();
+  
+  const scene = renderer.createScene();
 
   const tex = new tinygpu.ImageTexture(
     "https://assets.codepen.io/1082534/141601-2560x1600-desktop-hd-ocean-wallpaper-image.jpg",
@@ -20,5 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const mesh = renderer.createMesh(geo, mat);
 
-  renderer.render(mesh);
+  scene.add(mesh);
+
+  renderer.render(scene);
 });
