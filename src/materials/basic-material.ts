@@ -37,7 +37,6 @@ export class BasicMaterial extends Material {
 
   get uniformBuffer(): ArrayBuffer {
     const uniforms = [
-      { name: "model", value: mat4.identity() },
       { name: "color", value: this._color.uniformValue() },
     ];
 

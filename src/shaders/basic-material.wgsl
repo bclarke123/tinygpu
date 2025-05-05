@@ -5,16 +5,19 @@ struct SceneUniforms {
   time: f32,
 }
 
-struct Uniforms {
+struct ModelUniforms {
   model: mat4x4<f32>,
+}
+
+struct Uniforms {
   color: vec4<f32>
 }
 
 @group(0) @binding(0) var<uniform> scene_uniforms: SceneUniforms;
-
-@group(1) @binding(0) var<uniform> uniforms: Uniforms;
-@group(1) @binding(1) var tex_sampler: sampler;
-@group(1) @binding(2) var tex_map: texture_2d<f32>;
+@group(1) @binding(0) var<uniform> model_uniforms: ModelUniforms;
+@group(2) @binding(0) var<uniform> uniforms: Uniforms;
+@group(2) @binding(1) var tex_sampler: sampler;
+@group(2) @binding(2) var tex_map: texture_2d<f32>;
 
 struct VSOut {
     @builtin(position) position: vec4<f32>,
@@ -23,7 +26,7 @@ struct VSOut {
 
 @vertex
 fn vs_main(@location(0) in_pos: vec3<f32>, @location(1) uv: vec2<f32>) -> VSOut {
-  let modelViewProj: mat4x4<f32> = scene_uniforms.projection * scene_uniforms.view * uniforms.model;
+  let modelViewProj: mat4x4<f32> = scene_uniforms.projection * scene_uniforms.view * model_uniforms.model;
 
   let vs_out: VSOut = VSOut(
     modelViewProj * vec4<f32>(in_pos, 1.0),
