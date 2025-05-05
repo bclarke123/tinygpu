@@ -1,3 +1,5 @@
+import { vec4 } from "wgpu-matrix";
+
 export class Color {
   r: number;
   g: number;
@@ -14,7 +16,7 @@ export class Color {
   }
 
   uniformValue() {
-    this.buffer ??= new Float32Array([0, 0, 0, 0]);
+    this.buffer ??= vec4.create();
     this.buffer.set([this.r, this.g, this.b, this.a]);
     return this.buffer;
   }
