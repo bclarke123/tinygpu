@@ -1,10 +1,8 @@
-import { mat4, vec3 } from "wgpu-matrix";
 import { Geometry } from "./geometry/geometry";
 import { GeometryFactory } from "./geometry/geometry-factory";
 import { Material } from "./materials/material";
 import { MaterialFactory } from "./materials/material-factory";
 import { Mesh } from "./mesh";
-import { packUniforms, uploadUniformBuffer } from "./uniform-utils";
 import { Scene } from "./scene";
 
 export interface RendererOptions {
