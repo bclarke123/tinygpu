@@ -1,6 +1,6 @@
 struct SceneUniforms {
-  view: mat4x4<f32>,
   projection: mat4x4<f32>,
+  view: mat4x4<f32>,
   cameraPos: vec3<f32>,
   time: f32,
 }
@@ -34,6 +34,6 @@ fn vs_main(@location(0) in_pos: vec3<f32>, @location(1) uv: vec2<f32>) -> VSOut 
 
 @fragment
 fn fs_main(vs_out: VSOut) -> @location(0) vec4<f32> {
-  let color: vec4<f32> = textureSample(uniforms.map, uniforms.sampler, vs_out.uv);
+  let color: vec4<f32> = textureSample(tex_map, tex_sampler, vs_out.uv);
   return color * uniforms.color;
 }
