@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await renderer.init();
   
   const scene = renderer.createScene();
+  const camera = new tinygpu.PerspectiveCamera({ aspect: canvas.width / canvas.height, fov: Math.PI / 6 });
 
   const tex = new tinygpu.ImageTexture(
     "https://assets.codepen.io/1082534/141601-2560x1600-desktop-hd-ocean-wallpaper-image.jpg",
@@ -24,5 +25,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   scene.add(mesh);
 
-  renderer.render(scene);
+  renderer.render(scene, camera);
 });
