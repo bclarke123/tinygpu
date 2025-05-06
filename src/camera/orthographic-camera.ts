@@ -1,6 +1,18 @@
 import { mat4, vec3, Vec3 } from "wgpu-matrix";
 import { Camera } from "./camera";
 
+export interface OrthographicCameraProps {
+    left: number;
+    right: number;
+    bottom: number;
+    top: number;
+    near: number;
+    far: number;
+    position: Vec3;
+    target: Vec3;
+    up: Vec3;
+}
+
 export class OrthographicCamera extends Camera {
     // --- Camera View Properties ---
     public target: Vec3; // The point the camera is looking at
