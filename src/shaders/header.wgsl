@@ -5,7 +5,8 @@ const BG_UNIFORMS: u32 = 2;
 struct SceneUniforms {
   projection: mat4x4<f32>,
   view: mat4x4<f32>,
-  cameraPos: vec3<f32>,
+  camera_position: vec3<f32>,
+  resolution: vec2<f32>,
   time: f32,
 }
 
