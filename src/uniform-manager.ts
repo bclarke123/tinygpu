@@ -40,6 +40,7 @@ export class UniformManager {
 
         if (this._texturesDirty) {
             (this._textures || []).forEach((t) => t.upload(this._device));
+            this._texturesDirty = false;
         }
     }
 
