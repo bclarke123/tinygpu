@@ -37,14 +37,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     @fragment
     fn fs_main(vs_out: VSOut) -> @location(0) vec4<f32> {
       let uv = vs_out.uv;
+      let px = uv.y / scene_uniforms.resolution.y;
 
-      let top = vec3(uv.x, 0.7, 1.0);
+      let top = vec3(1.0 - uv.x, 0.7, 1.0);
       let bottom = vec3(0.4, 1.0, uv.x);
 
-      let mix_uv = uv.y + sin(uv.x * 14.0 + scene_uniforms.time) * 0.05;
+      let mix_uv = uv.y + sin(uv.x * 14.0 + scene_uniforms.time / 1000.0) * 0.05;
 
-      let col = mix(bottom, top, smoothstep(0.499, 0.501, mix_uv));
-
+      var col = mix(bottom, top, smoothstep(0.5 - px, 0.5 + px, mix_uv));
       return vec4(col, 1.0);
     }
 
