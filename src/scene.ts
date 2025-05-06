@@ -1,18 +1,14 @@
-import { packUniforms, uploadUniformBuffer } from "./uniform-utils";
 import { Transform } from "./transform";
 import { Camera } from "./camera/camera";
-import { vec2, Vec2 } from "wgpu-matrix";
+import { mat4, vec2, Vec2, vec3 } from "wgpu-matrix";
+import { UniformManager } from "./uniform-manager";
 
 export class Scene extends Transform {
     private _device: GPUDevice;
-    private _uniformBuffer?: GPUBuffer;
-    private _uniformArr: ArrayBuffer;
     private _resolution: Vec2;
     private _canvas: HTMLCanvasElement;
     private _observer: ResizeObserver;
-
-    private _bindGroupLayout?: GPUBindGroupLayout;
-    private _bindGroup?: GPUBindGroup;
+    private _uniformManager: UniformManager;
 
     constructor(device: GPUDevice, canvas: HTMLCanvasElement) {
         super();
@@ -22,6 +18,17 @@ export class Scene extends Transform {
 
         this._resolution = vec2.create();
         this.canvasResize();
+
+        this._uniformManager = new UniformManager(
+            device,
+            [
+                { name: "projection matrix", value: mat4.create() },
+                { name: "view matrix", value: mat4.create() },
+                { name: "camera position", value: vec3.create() },
+                { name: "resolution", value: this._resolution },
+                { name: "time", value: performance.now() / 1000 },
+            ]
+        );
     }
 
     bindCanvasResize() {
@@ -33,73 +40,21 @@ export class Scene extends Transform {
         this._resolution.set([this._canvas.offsetWidth, this._canvas.offsetHeight]);
     }
 
-    uniformBuffer(camera: Camera): ArrayBuffer {
-        const uniforms = [
-            { name: "projection matrix", value: camera.projectionMatrix },
-            { name: "view matrix", value: camera.viewMatrix },
-            { name: "camera position", value: camera.position },
-            { name: "resolution", value: this._resolution },
-            { name: "time", value: performance.now() / 1000 },
-        ];
+    update(camera: Camera) {
+        this._uniformManager.updateUniform({ name: "projection matrix", value: camera.projectionMatrix });
+        this._uniformManager.updateUniform({ name: "view matrix", value: camera.viewMatrix });
+        this._uniformManager.updateUniform({ name: "camera position", value: camera.position });
+        this._uniformManager.updateUniform({ name: "resolution", value: this._resolution });
+        this._uniformManager.updateUniform({ name: "time", value: performance.now() / 1000 });
 
-        this._uniformArr = packUniforms(uniforms, this._uniformArr);
-
-        return this._uniformArr;
+        this._uniformManager.update();
     }
 
-    uploadUniforms(camera: Camera): GPUBuffer {
-        this._uniformBuffer = uploadUniformBuffer(
-            this.uniformBuffer(camera),
-            this._device,
-            "Material uniform buffer",
-            this._uniformBuffer,
-        );
-        return this._uniformBuffer;
+    get bindGroupLayout() {
+        return this._uniformManager.bindGroupLayout;
     }
 
-    get bindGroupLayout(): GPUBindGroupLayout {
-        if (!this._bindGroupLayout) {
-            const layoutDescriptor: GPUBindGroupLayoutDescriptor = {
-                label: "Scene Uniforms BindGroup Layout",
-                entries: [
-                    {
-                        binding: 0,
-                        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                        buffer: {
-                            type: "uniform",
-                            hasDynamicOffset: false,
-                            minBindingSize: 0,
-                        },
-                    },
-                ],
-            };
-
-            this._bindGroupLayout =
-                this._device.createBindGroupLayout(layoutDescriptor);
-
-            console.log("Created Scene BindGroupLayout:", this._bindGroupLayout);
-        }
-
-        return this._bindGroupLayout;
-    }
-
-    getBindGroup(camera: Camera): GPUBindGroup {
-        const uniforms = this.uploadUniforms(camera);
-
-        if (!this._bindGroup) {
-            const descriptor = {
-                layout: this.bindGroupLayout,
-                entries: [
-                    {
-                        binding: 0,
-                        resource: { buffer: uniforms },
-                    },
-                ],
-            };
-
-            this._bindGroup = this._device.createBindGroup(descriptor);
-        }
-
-        return this._bindGroup;
+    get bindGroup() {
+        return this._uniformManager.bindGroup;
     }
 }
