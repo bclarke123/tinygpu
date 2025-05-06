@@ -156,12 +156,17 @@ export class Renderer {
     passEncoder.setViewport(0, 0, width, height, 0, 1);
     passEncoder.setScissorRect(0, 0, width, height);
 
-    const sceneBindGroup = scene.getBindGroup(camera);
+    scene.update(camera);
+
+    const sceneBindGroup = scene.bindGroup;
     passEncoder.setBindGroup(0, sceneBindGroup);
 
     scene.traverse((obj) => {
       if (obj instanceof Mesh) {
         const mesh = obj;
+
+        mesh.update();
+        mesh.material.update();
 
         const pipeline = this.pipelineFor(scene, mesh);
 
