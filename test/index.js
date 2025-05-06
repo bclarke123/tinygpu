@@ -7,14 +7,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   await renderer.init();
 
   const scene = renderer.createScene();
-  // const camera = new tinygpu.PerspectiveCamera({ aspect: canvas.width / canvas.height, fov: Math.PI / 6 });
-  const camera = new tinygpu.OrthographicCamera();
+  const camera = renderer.createOrthographicCamera();
 
-  // const tex = new tinygpu.ImageTexture(
-  //   "https://assets.codepen.io/1082534/141601-2560x1600-desktop-hd-ocean-wallpaper-image.jpg",
-  // );
-
-  // await tex.load();
+  const geo = renderer.geometryFactory.createBigTriangle();
 
   const mat = renderer.materialFactory.createShaderMaterial({
     code: /* wgsl */ `
@@ -42,27 +37,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       let top = vec3(1.0 - uv.x, 0.7, 1.0);
       let bottom = vec3(0.4, 1.0, uv.x);
 
-      let mix_uv = uv.y + sin(uv.x * 14.0 + scene_uniforms.time / 1000.0) * 0.05;
+      let wave_time = scene_uniforms.time * 3.0;
+      let wave = sin(uv.x * 24.0 + wave_time) 
+        + sin(uv.x * 7.0 + wave_time) 
+        + sin(uv.x * 9.0 + wave_time);
+      let mix_uv = uv.y + wave * 0.02;
 
       var col = mix(bottom, top, smoothstep(0.5 - px, 0.5 + px, mix_uv));
+
       return vec4(col, 1.0);
     }
 
-    `,
-    uniforms: [],
+    `
   });
-
-  // const mat = renderer.materialFactory.createBasicMaterial({
-  //   color: new tinygpu.Color(1, 1, 1, 1),
-  //   map: tex,
-  // });
-  const geo = renderer.geometryFactory.createBigTriangle();
 
   const mesh = renderer.createMesh(geo, mat);
 
   scene.add(mesh);
-
-  // renderer.render(scene, camera);
 
   const animate = () => {
     renderer.render(scene, camera);
