@@ -1,47 +1,26 @@
-import { uploadUniformBuffer } from "../uniform-utils";
+import { UniformManager } from "../uniform-manager";
 
 export abstract class Material {
   protected _device: GPUDevice;
-  protected _uniformBuffer?: GPUBuffer;
+  protected _uniformManager: UniformManager;
 
-  protected _bindGroupLayout?: GPUBindGroupLayout;
-  protected _bindGroup?: GPUBindGroup;
-
-  constructor(device: GPUDevice) {
+  constructor(device: GPUDevice, uniformManager?: UniformManager) {
     this._device = device;
+    this._uniformManager = uniformManager;
   }
 
   abstract get cacheKey(): string;
   abstract get shaderCode(): GPUShaderModule;
 
-  abstract get uniformBuffer(): ArrayBuffer;
-
-  abstract get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor;
-  abstract get bindGroupDescriptor(): GPUBindGroupDescriptor;
-
-  uploadUniforms(): GPUBuffer {
-    this._uniformBuffer = uploadUniformBuffer(
-      this.uniformBuffer,
-      this._device,
-      "Material uniform buffer",
-      this._uniformBuffer,
-    );
-    return this._uniformBuffer;
+  get bindGroupLayout(): GPUBindGroupLayout | undefined {
+    return this._uniformManager?.bindGroupLayout;
   }
 
-  get bindGroupLayout(): GPUBindGroupLayout {
-    if (!this._bindGroupLayout) {
-      this._bindGroupLayout = this._device.createBindGroupLayout(this.bindGroupLayoutDescriptor);
-    }
-
-    return this._bindGroupLayout;
+  get bindGroup(): GPUBindGroup | undefined {
+    return this._uniformManager?.bindGroup;
   }
 
-  get bindGroup(): GPUBindGroup {
-    if (!this._bindGroup) {
-      this._bindGroup = this._device.createBindGroup(this.bindGroupDescriptor);
-    }
-
-    return this._bindGroup;
+  update() {
+    this._uniformManager?.update();
   }
 }
