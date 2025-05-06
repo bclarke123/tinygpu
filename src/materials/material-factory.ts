@@ -1,25 +1,28 @@
-import { BasicMaterial, BasicMaterialOptions } from "./basic-material";
 import { Renderer } from "../renderer";
+import { BasicMaterial, BasicMaterialOptions } from "./basic-material";
+import { ShaderMaterial, ShaderMaterialOptions } from "./shader-material";
 
 export class MaterialFactory {
-    private _renderer: Renderer;
+  private _renderer: Renderer;
 
-    public constructor(renderer: Renderer) {
-        this._renderer = renderer;
-    }
+  public constructor(renderer: Renderer) {
+    this._renderer = renderer;
+  }
 
-    public get device(): GPUDevice {
-        return this._renderer.device!;
-    }
+  public get device(): GPUDevice {
+    return this._renderer.device!;
+  }
 
-    public createBasicMaterial(options: BasicMaterialOptions): BasicMaterial {
-        console.log("Precompiling BasicMaterial");
-        BasicMaterial.precompile(this.device);
+  public createBasicMaterial(options: BasicMaterialOptions): BasicMaterial {
+    console.log("Precompiling BasicMaterial");
+    BasicMaterial.precompile(this.device);
 
-        const material = new BasicMaterial(this.device, options);
+    const material = new BasicMaterial(this.device, options);
+    return material;
+  }
 
-
-        return material;
-    }
-
+  public createShaderMaterial(options: ShaderMaterialOptions): ShaderMaterial {
+    const material = new ShaderMaterial(this.device, options);
+    return material;
+  }
 }
