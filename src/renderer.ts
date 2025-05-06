@@ -196,7 +196,7 @@ export class Renderer {
   }
 
   createScene(): Scene {
-    const scene = new Scene(this.device);
+    const scene = new Scene(this.device, this.canvas);
     return scene;
   }
 }
