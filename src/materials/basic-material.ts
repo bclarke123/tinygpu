@@ -37,11 +37,9 @@ export class BasicMaterial extends Material {
   }
 
   get uniformBuffer(): ArrayBuffer {
-    const uniforms = [
-      { name: "color", value: this._color.uniformValue() },
-    ];
+    const uniforms = [{ name: "color", value: this._color.uniformValue() }];
 
-    this._uniformArr = packUniforms(uniforms);
+    this._uniformArr = packUniforms(uniforms, this._uniformArr);
 
     return this._uniformArr;
   }
@@ -67,7 +65,11 @@ export class BasicMaterial extends Material {
         {
           binding: 2,
           visibility: GPUShaderStage.FRAGMENT,
-          texture: { sampleType: "float", viewDimension: "2d", multisampled: false },
+          texture: {
+            sampleType: "float",
+            viewDimension: "2d",
+            multisampled: false,
+          },
         },
       ],
     };
