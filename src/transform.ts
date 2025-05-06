@@ -1,4 +1,4 @@
-import { mat4, Mat4, quat, Quat, vec3, Vec3 } from "wgpu-matrix";
+import { mat4, Mat4, quat, Quat, RotationOrder, vec3, Vec3 } from "wgpu-matrix";
 
 function compose(position: Vec3, rotation: Quat, scale: Vec3, dst?: Mat4): Mat4 {
 
@@ -80,7 +80,7 @@ export class Transform {
         return this._position; // Return stored local value
     }
 
-    get rotation(): Quat {
+    get quaternion(): Quat {
         return this._rotation; // Return stored local value
     }
 
@@ -96,11 +96,16 @@ export class Transform {
         }
     }
 
-    set rotation(value: Quat) {
+    set quaternion(value: Quat) {
         if (!quat.equals(this._rotation, value)) {
             this._rotation = quat.copy(value, this._rotation);
             this.makeDirty();
         }
+    }
+
+    setRotation(xValue: number, yValue: number, zValue: number, order: RotationOrder = "xyz") {
+        this._rotation = quat.fromEuler(xValue, yValue, zValue, order);
+        this.makeDirty();
     }
 
     set scale(value: Vec3) {
