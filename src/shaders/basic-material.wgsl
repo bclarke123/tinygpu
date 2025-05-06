@@ -1,4 +1,3 @@
-
 struct Uniforms {
   color: vec4<f32>
 }
