@@ -39,7 +39,7 @@ export class Scene extends Transform {
             { name: "view matrix", value: camera.viewMatrix },
             { name: "camera position", value: camera.position },
             { name: "resolution", value: this._resolution },
-            { name: "time", value: performance.now() },
+            { name: "time", value: performance.now() / 1000 },
         ];
 
         this._uniformArr = packUniforms(uniforms, this._uniformArr);
