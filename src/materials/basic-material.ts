@@ -1,7 +1,9 @@
 import { Color } from "../color";
 import { DefaultTexture, Texture } from "../texture";
 
+import shaderHeader from "../shaders/header.wgsl";
 import basicMaterialShader from "../shaders/basic-material.wgsl";
+
 import { Material } from "./material";
 import { packUniforms } from "../uniform-utils";
 
@@ -105,7 +107,10 @@ export class BasicMaterial extends Material {
     if (!BasicMaterial.shaderModule) {
       BasicMaterial.shaderModule = device.createShaderModule({
         label: "basic-material-shader",
-        code: basicMaterialShader,
+        code: `
+${shaderHeader}
+${basicMaterialShader}
+`,
       });
     }
   }
