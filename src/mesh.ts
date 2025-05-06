@@ -28,6 +28,8 @@ export class Mesh extends Transform {
     }
 
     update() {
+        this.material.update();
+
         this._uniformManager.updateUniform({
             name: "model", value: this.worldMatrix
         });

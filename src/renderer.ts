@@ -166,7 +166,6 @@ export class Renderer {
         const mesh = obj;
 
         mesh.update();
-        mesh.material.update();
 
         const pipeline = this.pipelineFor(scene, mesh);
 
