@@ -1,4 +1,6 @@
-export type UniformObj = { name: string; value: number | Float32Array };
+import { Color } from "./color";
+
+export type UniformObj = { name: string; value: number | Float32Array | Color };
 
 interface Std140LayoutInfo {
   align: number; // Alignment requirement in bytes
@@ -14,15 +16,17 @@ const STD140_LAYOUT_INFO: Record<string, Std140LayoutInfo> = {
   vec2: { align: 8, size: 8, advanceAmount: 8, paddedStride: 8 },
   vec3: { align: 16, size: 12, advanceAmount: 16, paddedStride: 16 }, // Aligns to 16, data size 12, occupies 16
   vec4: { align: 16, size: 16, advanceAmount: 16, paddedStride: 16 },
+  color: { align: 16, size: 16, advanceAmount: 16, paddedStride: 16 },
   mat3: { align: 16, size: 36, advanceAmount: 48, paddedStride: 16 }, // Size 9*4=36, 3 cols * 16 bytes/col stride = 48 bytes advance
   mat4: { align: 16, size: 64, advanceAmount: 64, paddedStride: 16 }, // Size 16*4=64, 4 cols * 16 bytes/col stride = 64 bytes advance
-  // Add other types like arrays, structs if needed, following std140 rules
 };
 
 // Helper to determine the WGSL type string from a JavaScript value
 function getDataType(item: UniformObj): string {
   if (typeof item.value === "number") {
     return "f32";
+  } else if (item.value instanceof Color) {
+    return "color";
   } else if (item.value instanceof Float32Array) {
     switch (item.value.length) {
       case 2:
@@ -140,6 +144,9 @@ export function packUniforms(
       case "f32":
         // Write single float using DataView
         bufferView.setFloat32(writeOffset, layout.data.value as number, true); // true for littleEndian
+        break;
+      case "color":
+        bufferAsFloats.set((layout.data.value as Color).uniformValue(), writeOffset / 4);
         break;
       case "vec2":
       case "vec4":
