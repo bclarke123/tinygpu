@@ -1,4 +1,6 @@
 import { Camera } from "./camera/camera";
+import { OrthographicCamera, OrthographicCameraProps } from "./camera/orthographic-camera";
+import { PerspectiveCamera, PerspectiveCameraProps } from "./camera/perspective-camera";
 import { Geometry } from "./geometry/geometry";
 import { GeometryFactory } from "./geometry/geometry-factory";
 import { Material } from "./materials/material";
@@ -126,7 +128,7 @@ export class Renderer {
     });
 
     this._pipelineCache.set(cacheKey, pipeline);
-    console.log("Pipeline created", cacheKey);
+    // console.log("Pipeline created", cacheKey);
 
     return pipeline;
   }
@@ -198,5 +200,13 @@ export class Renderer {
   createScene(): Scene {
     const scene = new Scene(this.device, this.canvas);
     return scene;
+  }
+
+  createPerspectiveCamera(options?: PerspectiveCameraProps): PerspectiveCamera {
+    return new PerspectiveCamera(options);
+  }
+
+  createOrthographicCamera(options?: OrthographicCameraProps): OrthographicCamera {
+    return new OrthographicCamera(options);
   }
 }
