@@ -1,4 +1,3 @@
-import { vec3 } from "wgpu-matrix";
 import { packUniforms, uploadUniformBuffer } from "./uniform-utils";
 import { Transform } from "./transform";
 import { Camera } from "./camera/camera";
@@ -6,6 +5,7 @@ import { Camera } from "./camera/camera";
 export class Scene extends Transform {
   private _device: GPUDevice;
   private _uniformBuffer?: GPUBuffer;
+  private _uniformArr: ArrayBuffer;
 
   private _bindGroupLayout?: GPUBindGroupLayout;
   private _bindGroup?: GPUBindGroup;
@@ -23,7 +23,8 @@ export class Scene extends Transform {
       { name: "time", value: performance.now() },
     ];
 
-    return packUniforms(uniforms);
+    this._uniformArr = packUniforms(uniforms, this._uniformArr);
+    return this._uniformArr;
   }
 
   uploadUniforms(camera: Camera): GPUBuffer {
