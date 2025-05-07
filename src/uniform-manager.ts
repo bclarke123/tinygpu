@@ -28,7 +28,12 @@ export class UniformManager {
     updateUniform(uniform: UniformObj) {
         const toUpdate = this._uniforms?.find((u) => u.name === uniform.name);
         toUpdate.value = uniform.value;
-        this._uniformDirty = true;
+        this.setUniformsDirty();
+    }
+
+    updateTextures(textures?: Texture[]) {
+        this._textures = textures;
+        this._texturesDirty = true;
     }
 
     update() {
@@ -42,6 +47,19 @@ export class UniformManager {
             (this._textures || []).forEach((t) => t.upload(this._device));
             this._texturesDirty = false;
         }
+    }
+
+    setTexturesDirty() {
+        this._texturesDirty = true;
+    }
+
+    setUniformsDirty() {
+        this._uniformDirty = true;
+    }
+
+    setDirty() {
+        this.setTexturesDirty();
+        this.setUniformsDirty();
     }
 
     get sampler(): GPUSampler {
