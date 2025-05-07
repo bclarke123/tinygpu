@@ -1,3 +1,4 @@
+import { vec2, Vec2 } from "wgpu-matrix";
 import { Camera } from "./camera/camera";
 import { OrthographicCamera, OrthographicCameraProps } from "./camera/orthographic-camera";
 import { PerspectiveCamera, PerspectiveCameraProps } from "./camera/perspective-camera";
@@ -16,9 +17,15 @@ export class Renderer {
   device?: GPUDevice;
   adapter: GPUAdapter | null = null;
 
+  format: GPUTextureFormat = "bgra8unorm";
   canvas?: HTMLCanvasElement;
   context?: GPUCanvasContext;
-  format: GPUTextureFormat = "bgra8unorm";
+  resizeObserver: ResizeObserver;
+  depthTexture: GPUTexture;
+  depthTextureView: GPUTextureView;
+
+  canvasSize: Vec2 = vec2.create(1, 1);
+  sizeDirty = true;
 
   commandEncoder?: GPUCommandEncoder;
   queue?: GPUQueue;
@@ -51,18 +58,47 @@ export class Renderer {
   }
 
   initCanvas(canvas?: HTMLCanvasElement) {
-    this.canvas ??= canvas;
+    this.canvas = canvas;
     this.context = this.canvas?.getContext("webgpu") as GPUCanvasContext;
 
     if (!this.context) {
       throw new Error("Failed to get WebGPU context");
     }
 
+    this.format = navigator.gpu.getPreferredCanvasFormat();
+
+    console.log(this.format);
+
     this.context.configure({
       device: this.device!,
       format: this.format,
       alphaMode: "premultiplied",
     });
+
+    const onResize = () => {
+      const width = this.canvas.offsetWidth;
+      const height = this.canvas.offsetHeight;
+
+      this.canvas.width = width;
+      this.canvas.height = height;
+
+      this.canvasSize.set([width, height]);
+      this.sizeDirty = true;
+
+      this.depthTexture?.destroy();
+      this.depthTexture = this.device.createTexture({
+        label: "Depth texture",
+        size: { width, height },
+        format: "depth24plus-stencil8",
+        usage: GPUTextureUsage.RENDER_ATTACHMENT
+      });
+
+      this.depthTextureView = this.depthTexture.createView({ label: "Depth texture view " });
+    };
+
+    onResize();
+    this.resizeObserver = new ResizeObserver(onResize);
+    this.resizeObserver.observe(this.canvas);
 
     console.log("Canvas initialized");
   }
@@ -125,6 +161,17 @@ export class Renderer {
           },
         ],
       },
+      primitive: {
+        topology: "triangle-list",
+        stripIndexFormat: undefined,
+        frontFace: "ccw",
+        cullMode: "back"
+      },
+      depthStencil: {
+        depthWriteEnabled: true,
+        depthCompare: 'less',
+        format: 'depth24plus-stencil8'
+      }
     });
 
     this._pipelineCache.set(cacheKey, pipeline);
@@ -134,21 +181,31 @@ export class Renderer {
   }
 
   render(scene: Scene, camera: Camera) {
-    const tex = this.context!.getCurrentTexture();
-    const view = tex.createView();
+    const [width, height] = this.canvasSize;
 
-    const width = this.canvas!.width;
-    const height = this.canvas!.height;
+    const outputTexture = this.context.getCurrentTexture();
+    const outputTextureView = outputTexture.createView({
+      label: "Canvas output texture view"
+    });
 
     const renderPassDesc = {
+      label: "Render pass",
       colorAttachments: [
         {
-          view,
+          view: outputTextureView,
           clearValue: [0, 0, 0, 1],
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
         },
       ],
+      depthStencilAttachment: {
+        view: this.depthTextureView,
+        depthClearValue: 1,
+        depthLoadOp: "clear" as GPULoadOp,
+        depthStoreOp: "store" as GPUStoreOp,
+        stencilLoadOp: "clear" as GPULoadOp,
+        stencilStoreOp: "store" as GPUStoreOp,
+      }
     };
 
     const commandEncoder = this.device.createCommandEncoder();
@@ -156,7 +213,12 @@ export class Renderer {
     passEncoder.setViewport(0, 0, width, height, 0, 1);
     passEncoder.setScissorRect(0, 0, width, height);
 
-    scene.update(camera);
+    if (this.sizeDirty) {
+      camera.viewportResized(this.canvasSize);
+      this.sizeDirty = false;
+    }
+
+    scene.update(camera, this.canvasSize);
 
     const sceneBindGroup = scene.bindGroup;
     passEncoder.setBindGroup(0, sceneBindGroup);
@@ -202,7 +264,7 @@ export class Renderer {
   }
 
   createScene(): Scene {
-    const scene = new Scene(this.device, this.canvas);
+    const scene = new Scene(this.device);
     return scene;
   }
 
