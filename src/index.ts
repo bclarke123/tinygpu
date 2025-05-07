@@ -11,3 +11,4 @@ export { DefaultTexture, ImageTexture } from "./texture";
 export { PerspectiveCamera } from "./camera/perspective-camera";
 export { OrthographicCamera } from "./camera/orthographic-camera";
 export { Scene } from "./scene";
+export { Transform } from "./transform";
