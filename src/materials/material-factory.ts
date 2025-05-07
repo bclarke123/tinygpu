@@ -1,6 +1,7 @@
 import { Renderer } from "../renderer";
 import { BasicMaterial, BasicMaterialOptions } from "./basic-material";
 import { ShaderMaterial, ShaderMaterialOptions } from "./shader-material";
+import { UVMaterial } from "./uv-material";
 
 export class MaterialFactory {
   private _renderer: Renderer;
@@ -23,6 +24,13 @@ export class MaterialFactory {
 
   public createShaderMaterial(options: ShaderMaterialOptions): ShaderMaterial {
     const material = new ShaderMaterial(this.device, options);
+    return material;
+  }
+
+  public createUVMaterial(): UVMaterial {
+    UVMaterial.precompile(this.device);
+
+    const material = new UVMaterial(this.device);
     return material;
   }
 }

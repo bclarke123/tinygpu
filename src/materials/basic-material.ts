@@ -29,9 +29,6 @@ export class BasicMaterial extends Material {
   }
 
   get shaderCode(): GPUShaderModule {
-    if (!BasicMaterial.shaderModule) {
-      throw new Error("Shader module not compiled");
-    }
     return BasicMaterial.shaderModule;
   }
 
