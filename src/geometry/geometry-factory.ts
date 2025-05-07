@@ -1,5 +1,6 @@
 import { Renderer } from "../renderer";
 import { BigTriangle } from "./big-triangle";
+import { CubeGeometry } from "./cube";
 
 export class GeometryFactory {
     private _renderer: Renderer;
@@ -14,6 +15,11 @@ export class GeometryFactory {
 
     public createBigTriangle(): BigTriangle {
         const geometry = new BigTriangle(this._renderer);
+        return geometry;
+    }
+
+    public createCube(): CubeGeometry {
+        const geometry = new CubeGeometry(this._renderer);
         return geometry;
     }
 }
