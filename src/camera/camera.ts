@@ -1,4 +1,4 @@
-import { mat4, Mat4 } from "wgpu-matrix";
+import { mat4, Mat4, Vec2 } from "wgpu-matrix";
 import { Transform } from "../transform";
 
 export abstract class Camera extends Transform {
@@ -50,4 +50,6 @@ export abstract class Camera extends Transform {
             this.updateViewMatrix();
         }
     }
+
+    abstract viewportResized(size: Vec2);
 }

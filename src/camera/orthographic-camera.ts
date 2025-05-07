@@ -1,4 +1,4 @@
-import { mat4, vec3, Vec3 } from "wgpu-matrix";
+import { mat4, Vec2, vec3, Vec3 } from "wgpu-matrix";
 import { Camera } from "./camera";
 
 export interface OrthographicCameraProps {
@@ -151,5 +151,9 @@ export class OrthographicCamera extends Camera {
             this.far = newFar;
             this._isProjectionDirty = true;
         }
+    }
+
+    override viewportResized(_: Vec2) {
+        // nop
     }
 }

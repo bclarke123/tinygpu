@@ -1,4 +1,4 @@
-import { mat4, vec3, Vec3 } from "wgpu-matrix";
+import { mat4, Vec2, vec3, Vec3 } from "wgpu-matrix";
 import { Camera } from "./camera";
 
 export interface PerspectiveCameraProps {
@@ -118,4 +118,7 @@ export class PerspectiveCamera extends Camera {
         }
     }
 
+    override viewportResized(size: Vec2) {
+        this.setAspect(size[0] / size[1]);
+    }
 }
