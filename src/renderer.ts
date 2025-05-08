@@ -10,7 +10,6 @@ import {
 } from "./camera/perspective-camera";
 import { Geometry } from "./geometry/geometry";
 import { Material } from "./materials/material";
-import { MaterialFactory } from "./materials/material-factory";
 import { Mesh } from "./mesh";
 import { Scene } from "./scene";
 
@@ -252,10 +251,11 @@ export class Renderer {
     this.device!.queue.submit([commandEncoder.finish()]);
   }
 
-  private _materialFactory: MaterialFactory | null = null;
-  get materialFactory(): MaterialFactory {
-    this._materialFactory ??= new MaterialFactory(this);
-    return this._materialFactory;
+  public createMaterial<T extends Material, O>(
+    c: new (device: GPUDevice, o?: O) => T,
+    o?: O,
+  ) {
+    return new c(this.device, o);
   }
 
   createGeometry<T extends Geometry>(c: new (renderer: Renderer) => T) {
