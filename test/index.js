@@ -9,9 +9,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const scene = renderer.createScene();
   const camera = renderer.createOrthographicCamera();
 
-  const geo = renderer.createGeometry(tinygpu.BigTriangle);
+  const geo = renderer.createGeometry(tinygpu.geometry.BigTriangle);
 
-  const mat = renderer.materialFactory.createShaderMaterial({
+  const mat = renderer.createMaterial(tinygpu.material.ShaderMaterial, {
     code: /* wgsl */ `
     struct VSOut {
         @builtin(position) position: vec4<f32>,
