@@ -1,7 +1,6 @@
 export { Renderer, RendererOptions } from "./renderer";
-export { MaterialFactory } from "./materials/material-factory";
-export { GeometryFactory } from "./geometry/geometry-factory";
 export { BigTriangle } from "./geometry/big-triangle";
+export { CubeGeometry } from "./geometry/cube";
 export {
   BasicMaterial,
   BasicMaterialOptions,
