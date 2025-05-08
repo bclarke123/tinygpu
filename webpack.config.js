@@ -1,9 +1,12 @@
 const path = require("path");
 
+const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+const devtool = process.env.NODE_ENV === 'production' ? undefined : 'inline-source-map';
+
 module.exports = {
   entry: ["./src/index.ts"],
-  mode: "development",
-  devtool: "inline-source-map",
+  mode,
+  devtool,
   module: {
     rules: [
       {
