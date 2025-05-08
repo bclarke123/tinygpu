@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>tinygpu example: Hello World</title>
+    <style type="text/css">
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <script src="../dist/index.js"></script>
+    <script>
+document.addEventListener("DOMContentLoaded", async () => {
+    const canvas = document.getElementById("canvas");
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    const renderer = new tinygpu.Renderer({ canvas });
+    await renderer.init();
+
+    const scene = renderer.createScene();
+    const camera = renderer.createPerspectiveCamera();
+
+    const geo = renderer.createGeometry(tinygpu.geometry.CubeGeometry);
+    const mat = renderer.createMaterial(tinygpu.material.UVMaterial);
+    const mesh = renderer.createMesh(geo, mat);
+
+    scene.add(mesh);
+
+    const animate = () => {
+        const now = performance.now() / 1000;
+        mesh.setRotation(0, now, now * 0.7);
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+    };
+
+    animate();
+});
+    </script>
+</body>
+
+</html>

@@ -10,6 +10,11 @@
       "./node_modules/@webgpu/types"
     ],
     "rootDir": "./src",
-    "outDir": "./dist"
-  }
+    "outDir": "./dist",
+    "declaration": true
+  },
+  "exclude": [
+    "dist",
+    "examples"
+  ]
 }
