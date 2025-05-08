@@ -1,6 +1,6 @@
 {
   "name": "@g3rmania/tinygpu",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A minimal framework for WebGPU in the browser",
   "keywords": [
     "webgpu",
@@ -19,7 +19,7 @@
   },
   "license": "MIT",
   "author": "Ben Clarke <me@benclarke.ca>",
-  "type": "module",
+  "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {
@@ -27,7 +27,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx webpack"
   },
   "dependencies": {
     "wgpu-matrix": "^3.4.0"
