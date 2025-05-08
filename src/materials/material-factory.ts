@@ -15,22 +15,15 @@ export class MaterialFactory {
   }
 
   public createBasicMaterial(options: BasicMaterialOptions): BasicMaterial {
-    console.log("Precompiling BasicMaterial");
-    BasicMaterial.precompile(this.device);
-
     const material = new BasicMaterial(this.device, options);
     return material;
   }
 
   public createShaderMaterial(options: ShaderMaterialOptions): ShaderMaterial {
-    const material = new ShaderMaterial(this.device, options);
-    return material;
+    return new ShaderMaterial(this.device, options);
   }
 
   public createUVMaterial(): UVMaterial {
-    UVMaterial.precompile(this.device);
-
-    const material = new UVMaterial();
-    return material;
+    return new UVMaterial(this.device);
   }
 }

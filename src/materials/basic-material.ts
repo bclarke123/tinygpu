@@ -13,6 +13,8 @@ export interface BasicMaterialOptions {
 
 export class BasicMaterial extends Material {
   constructor(device: GPUDevice, options: BasicMaterialOptions = {}) {
+    BasicMaterial.precompile(device);
+
     const uniformManager = new UniformManager(
       device,
       [
