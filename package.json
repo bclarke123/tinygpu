@@ -21,8 +21,9 @@
   "author": "Ben Clarke <me@benclarke.ca>",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "directories": {
-    "example": "examples",
+    "dist": "dist",
     "test": "test"
   },
   "scripts": {

@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UVMaterial = exports.ShaderMaterial = exports.BasicMaterial = exports.Material = void 0;
+var material_1 = require("./material");
+Object.defineProperty(exports, "Material", { enumerable: true, get: function () { return material_1.Material; } });
+var basic_material_1 = require("./basic-material");
+Object.defineProperty(exports, "BasicMaterial", { enumerable: true, get: function () { return basic_material_1.BasicMaterial; } });
+var shader_material_1 = require("./shader-material");
+Object.defineProperty(exports, "ShaderMaterial", { enumerable: true, get: function () { return shader_material_1.ShaderMaterial; } });
+var uv_material_1 = require("./uv-material");
+Object.defineProperty(exports, "UVMaterial", { enumerable: true, get: function () { return uv_material_1.UVMaterial; } });
