@@ -21,6 +21,7 @@ export class Renderer {
   device?: GPUDevice;
   adapter: GPUAdapter | null = null;
 
+  depthFormat: GPUTextureFormat = "depth24plus-stencil8";
   format: GPUTextureFormat = "bgra8unorm";
   canvas?: HTMLCanvasElement;
   context?: GPUCanvasContext;
@@ -93,8 +94,8 @@ export class Renderer {
       this.depthTexture = this.device.createTexture({
         label: "Depth texture",
         size: { width, height },
-        format: "depth24plus-stencil8",
-        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: this.depthFormat,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT
       });
 
       this.depthTextureView = this.depthTexture.createView({
