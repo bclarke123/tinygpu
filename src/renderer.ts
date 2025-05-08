@@ -1,9 +1,14 @@
 import { vec2, Vec2 } from "wgpu-matrix";
 import { Camera } from "./camera/camera";
-import { OrthographicCamera, OrthographicCameraProps } from "./camera/orthographic-camera";
-import { PerspectiveCamera, PerspectiveCameraProps } from "./camera/perspective-camera";
+import {
+  OrthographicCamera,
+  OrthographicCameraProps,
+} from "./camera/orthographic-camera";
+import {
+  PerspectiveCamera,
+  PerspectiveCameraProps,
+} from "./camera/perspective-camera";
 import { Geometry } from "./geometry/geometry";
-import { GeometryFactory } from "./geometry/geometry-factory";
 import { Material } from "./materials/material";
 import { MaterialFactory } from "./materials/material-factory";
 import { Mesh } from "./mesh";
@@ -90,10 +95,12 @@ export class Renderer {
         label: "Depth texture",
         size: { width, height },
         format: "depth24plus-stencil8",
-        usage: GPUTextureUsage.RENDER_ATTACHMENT
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
       });
 
-      this.depthTextureView = this.depthTexture.createView({ label: "Depth texture view " });
+      this.depthTextureView = this.depthTexture.createView({
+        label: "Depth texture view ",
+      });
     };
 
     onResize();
@@ -144,7 +151,7 @@ export class Renderer {
         scene.bindGroupLayout,
         mesh.bindGroupLayout,
         mesh.material.bindGroupLayout,
-      ]
+      ],
     });
 
     const pipeline = this.device!.createRenderPipeline({
@@ -165,13 +172,13 @@ export class Renderer {
         topology: "triangle-list",
         stripIndexFormat: undefined,
         frontFace: "ccw",
-        cullMode: "back"
+        cullMode: "back",
       },
       depthStencil: {
         depthWriteEnabled: true,
-        depthCompare: 'less',
-        format: 'depth24plus-stencil8'
-      }
+        depthCompare: "less",
+        format: "depth24plus-stencil8",
+      },
     });
 
     this._pipelineCache.set(cacheKey, pipeline);
@@ -185,7 +192,7 @@ export class Renderer {
 
     const outputTexture = this.context.getCurrentTexture();
     const outputTextureView = outputTexture.createView({
-      label: "Canvas output texture view"
+      label: "Canvas output texture view",
     });
 
     const renderPassDesc = {
@@ -205,7 +212,7 @@ export class Renderer {
         depthStoreOp: "store" as GPUStoreOp,
         stencilLoadOp: "clear" as GPULoadOp,
         stencilStoreOp: "store" as GPUStoreOp,
-      }
+      },
     };
 
     const commandEncoder = this.device.createCommandEncoder();
@@ -251,28 +258,25 @@ export class Renderer {
     return this._materialFactory;
   }
 
-  private _geometryFactory: GeometryFactory | null = null;
-  get geometryFactory(): GeometryFactory {
-    this._geometryFactory ??= new GeometryFactory(this);
-    return this._geometryFactory;
+  createGeometry<T extends Geometry>(c: new (renderer: Renderer) => T) {
+    return new c(this);
   }
 
   createMesh(geo: Geometry, mat: Material): Mesh {
-    const mesh = new Mesh(this.device, mat, geo);
-
-    return mesh;
+    return new Mesh(this.device, mat, geo);
   }
 
   createScene(): Scene {
-    const scene = new Scene(this.device);
-    return scene;
+    return new Scene(this.device);
   }
 
   createPerspectiveCamera(options?: PerspectiveCameraProps): PerspectiveCamera {
     return new PerspectiveCamera(options);
   }
 
-  createOrthographicCamera(options?: OrthographicCameraProps): OrthographicCamera {
+  createOrthographicCamera(
+    options?: OrthographicCameraProps,
+  ): OrthographicCamera {
     return new OrthographicCamera(options);
   }
 }
