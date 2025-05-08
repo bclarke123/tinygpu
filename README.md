@@ -1,4 +1,4 @@
-# nanogpu
+# tinygpu
 
 A lightweight WebGPU rendering library designed for ease of use and modern graphics development. It provides a simple API for creating scenes, managing cameras, and rendering 3D objects with materials and textures.
 
