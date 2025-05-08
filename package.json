@@ -1,11 +1,30 @@
 {
-  "name": "tinygpu",
+  "name": "@g3rmania/tinygpu",
   "version": "0.1.0",
   "description": "A minimal framework for WebGPU in the browser",
+  "keywords": [
+    "webgpu",
+    "graphics",
+    "3d",
+    "canvas",
+    "html5"
+  ],
+  "homepage": "https://github.com/bclarke123/tinygpu#readme",
+  "bugs": {
+    "url": "https://github.com/bclarke123/tinygpu/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bclarke123/tinygpu.git"
+  },
   "license": "MIT",
   "author": "Ben Clarke <me@benclarke.ca>",
-  "type": "commonjs",
+  "type": "module",
   "main": "dist/index.js",
+  "directories": {
+    "example": "examples",
+    "test": "test"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
