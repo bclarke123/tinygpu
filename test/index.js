@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const scene = renderer.createScene();
   const camera = renderer.createOrthographicCamera();
 
-  const geo = renderer.geometryFactory.createBigTriangle();
+  const geo = renderer.createGeometry(tinygpu.BigTriangle);
 
   const mat = renderer.materialFactory.createShaderMaterial({
     code: /* wgsl */ `
@@ -38,8 +38,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       let bottom = vec3(0.4, 1.0, uv.x);
 
       let wave_time = scene_uniforms.time * 3.0;
-      let wave = sin(uv.x * 24.0 + wave_time) 
-        + sin(uv.x * 7.0 + wave_time) 
+      let wave = sin(uv.x * 24.0 + wave_time)
+        + sin(uv.x * 7.0 + wave_time)
         + sin(uv.x * 9.0 + wave_time);
       let mix_uv = uv.y + wave * 0.02;
 
@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return vec4(col, 1.0);
     }
 
-    `
+    `,
   });
 
   const mesh = renderer.createMesh(geo, mat);
