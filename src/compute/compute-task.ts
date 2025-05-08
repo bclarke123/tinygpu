@@ -1,7 +1,7 @@
 import { UniformObj } from "../uniform-utils";
 
 export interface ComputeBufferObj {
-  writable: boolean;
+  type: GPUBufferBindingType,
   buffer: GPUBuffer;
 }
 
@@ -47,14 +47,79 @@ export class ComputeTask {
     return this._cacheKey;
   }
 
-  get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor {
-    const ret = {
-      label: `${this._options.label || "ComputeTask"} BindGroup Layout`,
-      entries: [],
+  get shaderModule(): GPUShaderModule {
+    return this._options.shader;
+  }
+
+  getPipelineLayout(device: GPUDevice): GPUPipelineLayoutDescriptor {
+
+    const bindGroupLayoutDescriptor = this.bindGroupLayoutDescriptor;
+    const bindGroupLayout = device.createBindGroupLayout({
+      label: `${this._options.label} BindGroup Layout`,
+      entries: bindGroupLayoutDescriptor
+    });
+
+    return {
+      label: `${this._options.label} Pipeline Layout Descriptor`,
+      bindGroupLayouts: [bindGroupLayout]
     };
+  }
 
-    // add uniforms, buffers, textures, samplers
+  get bindGroupLayoutDescriptor(): GPUBindGroupLayoutEntry[] {
+    const entries = [];
 
-    return ret;
+    let binding = 0;
+    const { uniforms, textures, buffers } = this._options;
+
+    if (uniforms?.length > 0) {
+      entries.push({
+        binding: 0,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: {
+          type: "uniform" as GPUBufferBindingType,
+          hasDynamicOffset: false,
+          minBindingSize: 0,
+        },
+      });
+      binding++;
+    }
+
+    if (textures?.length > 0) {
+      entries.push({
+        binding,
+        visibility: GPUShaderStage.COMPUTE,
+        sampler: { type: "filtering" },
+      });
+
+      binding++;
+
+      for (let i = 0; i < textures?.length; i++) {
+        entries.push({
+          binding,
+          visibility: GPUShaderStage.COMPUTE,
+          texture: {
+            sampleType: "float",
+            viewDimension: "2d",
+            multisampled: false,
+          },
+        });
+
+        binding++;
+      }
+    }
+
+    if (buffers?.length > 0) {
+      for (let i = 0; i < buffers?.length; i++) {
+        entries.push({
+          binding,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: buffers[i].type }
+        });
+
+        binding++;
+      }
+    }
+
+    return entries;
   }
 }

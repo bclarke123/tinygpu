@@ -254,7 +254,18 @@ export class Renderer {
     this.device!.queue.submit([commandEncoder.finish()]);
   }
 
-  compute(tasks: ComputeTask[]) {}
+  async computePipelineFor(task: ComputeTask): Promise<GPUComputePipeline> {
+    const layout = this.device.createPipelineLayout(task.getPipelineLayout(this.device));
+
+    return await this.device.createComputePipelineAsync({
+      layout,
+      compute: {
+        module: task.shaderModule
+      }
+    });
+  }
+
+  compute(tasks: ComputeTask[]) { }
 
   public createMaterial<T extends Material, O>(
     c: new (device: GPUDevice, o?: O) => T,
