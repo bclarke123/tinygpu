@@ -12,6 +12,7 @@ import { Geometry } from "./geometry/geometry";
 import { Material } from "./materials/material";
 import { Mesh } from "./mesh";
 import { Scene } from "./scene";
+import { ComputeTask } from "./compute/compute-task";
 
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
@@ -35,6 +36,7 @@ export class Renderer {
   queue?: GPUQueue;
 
   private _pipelineCache: Map<string, GPURenderPipeline> = new Map();
+  private _computePipelineCache: Map<string, GPUComputePipeline> = new Map();
 
   constructor(options: RendererOptions = {}) {
     this.canvas ??= options.canvas;
@@ -250,6 +252,8 @@ export class Renderer {
     passEncoder.end();
     this.device!.queue.submit([commandEncoder.finish()]);
   }
+
+  compute(tasks: ComputeTask[]) {}
 
   public createMaterial<T extends Material, O>(
     c: new (device: GPUDevice, o?: O) => T,
