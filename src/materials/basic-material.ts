@@ -1,11 +1,10 @@
 import { Color } from "../color";
 import { DefaultTexture, Texture } from "../texture";
+import { Material } from "./material";
+import { UniformManager } from "../uniform-manager";
 
 import shaderHeader from "../shaders/header.wgsl";
 import basicMaterialShader from "../shaders/basic-material.wgsl";
-
-import { Material } from "./material";
-import { UniformManager } from "../uniform-manager";
 
 export interface BasicMaterialOptions {
   color?: Color;
@@ -16,12 +15,17 @@ export class BasicMaterial extends Material {
   constructor(device: GPUDevice, options: BasicMaterialOptions = {}) {
     const uniformManager = new UniformManager(
       device,
-      [{ name: "color", value: (options.color || new Color(1, 1, 1)).uniformValue() }],
+      [
+        {
+          name: "color",
+          value: (options.color || new Color(1, 1, 1)).uniformValue(),
+        },
+      ],
       [options.map || DefaultTexture.instance],
-      "BasicMaterial"
-    )
+      "BasicMaterial",
+    );
 
-    super(device, uniformManager);
+    super(uniformManager);
   }
 
   get cacheKey(): string {

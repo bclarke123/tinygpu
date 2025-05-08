@@ -1,11 +1,9 @@
 import { UniformManager } from "../uniform-manager";
 
 export abstract class Material {
-  protected _device: GPUDevice;
   protected _uniformManager: UniformManager;
 
-  constructor(device: GPUDevice, uniformManager?: UniformManager) {
-    this._device = device;
+  constructor(uniformManager?: UniformManager) {
     this._uniformManager = uniformManager;
   }
 

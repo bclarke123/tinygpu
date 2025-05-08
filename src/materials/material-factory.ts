@@ -30,7 +30,7 @@ export class MaterialFactory {
   public createUVMaterial(): UVMaterial {
     UVMaterial.precompile(this.device);
 
-    const material = new UVMaterial(this.device);
+    const material = new UVMaterial();
     return material;
   }
 }

@@ -1,8 +1,9 @@
 import { Material } from "./material";
-import shaderHeader from "../shaders/header.wgsl";
 import { UniformObj } from "../uniform-utils";
 import { Texture } from "../texture";
 import { UniformManager } from "../uniform-manager";
+
+import shaderHeader from "../shaders/header.wgsl";
 
 export interface ShaderMaterialOptions {
   code: string;
@@ -15,9 +16,27 @@ export class ShaderMaterial extends Material {
   private _shaderModule: GPUShaderModule;
 
   constructor(device: GPUDevice, options: ShaderMaterialOptions) {
-    const uniformManager = new UniformManager(device, options.uniforms, options.textures, "ShaderMaterial");
-    super(device, uniformManager);
+    const uniformManager = new UniformManager(
+      device,
+      options.uniforms,
+      options.textures,
+      "ShaderMaterial",
+    );
+
+    super(uniformManager);
     this._options = options;
+
+    this.compile(device);
+  }
+
+  compile(device: GPUDevice) {
+    this._shaderModule = device.createShaderModule({
+      label: "ShaderModule",
+      code: `
+${shaderHeader}
+${this._options.code}
+      `,
+    });
   }
 
   get cacheKey(): string {
@@ -25,17 +44,6 @@ export class ShaderMaterial extends Material {
   }
 
   get shaderCode(): GPUShaderModule {
-    if (!this._shaderModule) {
-      this._shaderModule = this._device.createShaderModule({
-        label: "ShaderModule",
-        code: `
-  ${shaderHeader}
-  ${this._options.code}
-        `,
-      });
-    }
-
     return this._shaderModule;
   }
-
 }
