@@ -120,7 +120,7 @@ export class ComputeTask {
             visibility: GPUShaderStage.COMPUTE,
             storageTexture: {
               access,
-              format: textures[i].format || textures[i].texture.format,
+              format,
               viewDimension: textures[i].dimension,
             },
           });
