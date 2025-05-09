@@ -8,6 +8,19 @@ export declare abstract class Texture {
     abstract get height(): number;
     abstract get label(): string;
 }
+export declare class MappedTexture extends Texture {
+    private _descriptor;
+    private _view;
+    private _texture;
+    constructor(descriptor: GPUTextureDescriptor);
+    get descriptor(): GPUTextureDescriptor;
+    get view(): GPUTextureView;
+    upload(device: GPUDevice): void;
+    dispose(): void;
+    get width(): number;
+    get height(): number;
+    get label(): string;
+}
 export declare class DefaultTexture extends Texture {
     static instance: DefaultTexture;
     private _texture;

@@ -13,6 +13,7 @@ import { Material } from "./materials/material";
 import { Mesh } from "./mesh";
 import { Scene } from "./scene";
 import { ComputeTask } from "./compute/compute-task";
+import { ImageTexture, MappedTexture, Texture } from "./texture";
 
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
@@ -97,7 +98,7 @@ export class Renderer {
         label: "Depth texture",
         size: { width, height },
         format: this.depthFormat,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
       });
 
       this.depthTextureView = this.depthTexture.createView({
@@ -110,6 +111,10 @@ export class Renderer {
     this.resizeObserver.observe(this.canvas);
 
     console.log("Canvas initialized");
+  }
+
+  createShaderModule(descriptor: GPUShaderModuleDescriptor): GPUShaderModule {
+    return this.device.createShaderModule(descriptor);
   }
 
   createBuffer<T extends Float32Array | Uint16Array | Uint8Array>(
@@ -260,14 +265,14 @@ export class Renderer {
 
       const layout = this.device.createPipelineLayout({
         label: `${task.label} Pipeline Layout`,
-        bindGroupLayouts: [bgl]
+        bindGroupLayouts: [bgl],
       });
 
       const ret = this.device.createComputePipeline({
         layout,
         compute: {
-          module: task.shaderModule
-        }
+          module: task.shaderModule,
+        },
       });
 
       this._computePipelineCache[task.cacheKey] = ret;
@@ -291,7 +296,7 @@ export class Renderer {
       passEncoder.dispatchWorkgroups(size[0], size[1], size[2]);
     }
 
-    passEncoder.end()
+    passEncoder.end();
 
     this.device.queue.submit([commandEncoder.finish()]);
   }
@@ -323,5 +328,22 @@ export class Renderer {
     options?: OrthographicCameraProps,
   ): OrthographicCamera {
     return new OrthographicCamera(options);
+  }
+
+  async loadImageTexture(url: string): Promise<ImageTexture> {
+    const ret = new ImageTexture(url);
+    await ret.load();
+    ret.upload(this.device);
+    return ret;
+  }
+
+  createTexture(descriptor: GPUTextureDescriptor): MappedTexture {
+    const tex = new MappedTexture(descriptor);
+    tex.upload(this.device);
+    return tex;
+  }
+
+  createSampler(descriptor: GPUSamplerDescriptor): GPUSampler {
+    return this.device.createSampler(descriptor);
   }
 }

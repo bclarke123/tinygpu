@@ -5,9 +5,8 @@ export interface ComputeBufferObj {
     buffer: GPUBuffer;
 }
 export interface ComputeTextureObj {
-    layout: GPUTextureBindingLayout;
     texture: Texture;
-    accessType: "sample" | "storageRead" | "storageWrite";
+    accessType: "sample" | "storageRead" | "storageWrite" | "storageReadWrite";
     format?: GPUTextureFormat;
     dimension?: GPUTextureViewDimension;
 }

@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+    <head>
+        <title>tinygpu example: Hello World</title>
+        <style type="text/css">
+            body {
+                margin: 0;
+                overflow: hidden;
+            }
+
+            canvas {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+            }
+        </style>
+    </head>
+
+    <body>
+        <canvas id="canvas"></canvas>
+        <script src="../dist/index.js"></script>
+        <script>
+            document.addEventListener("DOMContentLoaded", async () => {
+                const canvas = document.getElementById("canvas");
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                const renderer = new tinygpu.Renderer({ canvas });
+                await renderer.init();
+
+                const scene = renderer.createScene();
+                const camera = renderer.createOrthographicCamera();
+
+                const tex = await renderer.loadImageTexture(
+                    "https://assets.codepen.io/1082534/141601-2560x1600-desktop-hd-ocean-wallpaper-image.jpg",
+                );
+
+                const target = renderer.createTexture({
+                    size: { width: tex.width, height: tex.height },
+                    format: "rgba8unorm",
+                    usage:
+                        GPUTextureUsage.TEXTURE_BINDING |
+                        GPUTextureUsage.COPY_DST |
+                        GPUTextureUsage.RENDER_ATTACHMENT |
+                        GPUTextureUsage.STORAGE_BINDING,
+                });
+
+                const sampler = renderer.createSampler({
+                    magFilter: "linear",
+                    minFilter: "linear",
+                });
+
+                const shader = renderer.createShaderModule({
+                    code: /* wgsl */ `
+                    @group(0) @binding(0) var tex_sampler: sampler;
+                    @group(0) @binding(1) var input_texture: texture_2d<f32>;
+                    @group(0) @binding(2) var output_texture: texture_storage_2d<rgba8unorm, write>;
+
+                    @compute @workgroup_size(8, 8, 1) // Or your preferred workgroup size
+                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                        let texture_dims: vec2<u32> = textureDimensions(input_texture);
+
+                        // Boundary check
+                        if (global_id.x >= texture_dims.x || global_id.y >= texture_dims.y) {
+                            return;
+                        }
+
+                        // Calculate normalized UV coordinates
+                        let uv_coords: vec2<f32> = vec2<f32>(global_id.xy) / vec2<f32>(texture_dims);
+
+                        // Sample the input texture
+                        var color_val: vec4<f32> = textureSample(input_texture, tex_sampler, uv_coords);
+
+                        // Invert the color (RGB channels)
+                        color_val.r = 1.0 - color_val.r;
+                        color_val.g = 1.0 - color_val.g;
+                        color_val.b = 1.0 - color_val.b;
+                        // Alpha remains unchanged: color_val.a = color_val.a;
+
+                        // Store the result in the output texture
+                        // textureStore requires integer coordinates for the texel
+                        textureStore(output_texture, vec2<i32>(global_id.xy), color_val);
+                    }
+
+                  `,
+                });
+
+                const task = new tinygpu.compute.ComputeTask({
+                    shader,
+                    samplers: [{ type: "filtering", sampler }],
+                    textures: [
+                        {
+                            accessType: "sample",
+                            format: tex._texture.format,
+                            dimension: "2d",
+                            texture: tex,
+                        },
+                        {
+                            accessType: "storageWrite",
+                            format: target._texture.format,
+                            dimension: "2d",
+                            texture: target,
+                        },
+                    ],
+                });
+
+                renderer.compute([task]);
+
+                const geo = renderer.createGeometry(
+                    tinygpu.geometry.BigTriangle,
+                );
+                const mat = renderer.createMaterial(
+                    tinygpu.material.BasicMaterial,
+                    {
+                        map: target,
+                    },
+                );
+                const mesh = renderer.createMesh(geo, mat);
+
+                scene.add(mesh);
+
+                renderer.render(scene, camera);
+            });
+        </script>
+    </body>
+</html>

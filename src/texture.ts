@@ -1,5 +1,5 @@
 export abstract class Texture {
-  constructor() { }
+  constructor() {}
 
   abstract get descriptor(): GPUTextureDescriptor;
   abstract get view(): GPUTextureView;
@@ -8,6 +8,41 @@ export abstract class Texture {
   abstract get width(): number;
   abstract get height(): number;
   abstract get label(): string;
+}
+
+export class MappedTexture extends Texture {
+  private _descriptor: GPUTextureDescriptor;
+  private _view: GPUTextureView;
+  private _texture: GPUTexture;
+
+  constructor(descriptor: GPUTextureDescriptor) {
+    super();
+    this._descriptor = descriptor;
+  }
+  get descriptor(): GPUTextureDescriptor {
+    return this._descriptor;
+  }
+  get view(): GPUTextureView {
+    if (!this._view) {
+      this._view = this._texture.createView();
+    }
+    return this._view;
+  }
+  upload(device: GPUDevice): void {
+    this._texture = device.createTexture(this.descriptor);
+  }
+  dispose(): void {
+    this._texture.destroy();
+  }
+  get width(): number {
+    return this._texture.width;
+  }
+  get height(): number {
+    return this._texture.height;
+  }
+  get label(): string {
+    return this._texture.label;
+  }
 }
 
 export class DefaultTexture extends Texture {

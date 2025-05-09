@@ -7,9 +7,8 @@ export interface ComputeBufferObj {
 }
 
 export interface ComputeTextureObj {
-  layout: GPUTextureBindingLayout;
   texture: Texture;
-  accessType: "sample" | "storageRead" | "storageWrite";
+  accessType: "sample" | "storageRead" | "storageWrite" | "storageReadWrite";
   format?: GPUTextureFormat;
   dimension?: GPUTextureViewDimension;
 }
@@ -50,11 +49,11 @@ export class ComputeTask {
       this._options.entryPoint,
     ];
 
-    for (const buf of this._options.buffers) {
+    for (const buf of this._options.buffers || []) {
       keys.push(buf.buffer.label);
     }
 
-    for (const tex of this._options.textures) {
+    for (const tex of this._options.textures || []) {
       keys.push(tex.texture.label);
     }
 
@@ -108,14 +107,18 @@ export class ComputeTask {
             },
           });
         } else {
+          const { accessType } = textures[i];
+          const access =
+            accessType === "storageReadWrite"
+              ? "read-write"
+              : accessType === "storageWrite"
+                ? "write-only"
+                : "read-only";
           entries.push({
             binding,
             visibility: GPUShaderStage.COMPUTE,
             storageTexture: {
-              access:
-                textures[i].accessType === "storageWrite"
-                  ? "write-only"
-                  : "read-only",
+              access,
               format: textures[i].format,
               viewDimension: textures[i].dimension,
             },
@@ -138,10 +141,14 @@ export class ComputeTask {
       }
     }
 
-    return {
+    const ret = {
       label: `${this.label} BindGroup Layout`,
       entries,
     };
+
+    console.log(JSON.stringify(ret));
+
+    return ret;
   }
 
   get bindGroupEntries(): GPUBindGroupEntry[] {
@@ -163,6 +170,7 @@ export class ComputeTask {
 
     if (textures?.length > 0) {
       for (let i = 0; i < textures?.length; i++) {
+        console.log(textures[i]);
         entries.push({
           binding,
           resource: textures[i].texture.view,
@@ -182,6 +190,8 @@ export class ComputeTask {
         binding++;
       }
     }
+
+    console.log(entries);
 
     return entries;
   }
