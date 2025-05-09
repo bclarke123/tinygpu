@@ -114,12 +114,13 @@ export class ComputeTask {
               : accessType === "storageWrite"
                 ? "write-only"
                 : "read-only";
+          const format = textures[i].format || textures[i].texture.format
           entries.push({
             binding,
             visibility: GPUShaderStage.COMPUTE,
             storageTexture: {
               access,
-              format: textures[i].format,
+              format: textures[i].format || textures[i].texture.format,
               viewDimension: textures[i].dimension,
             },
           });
