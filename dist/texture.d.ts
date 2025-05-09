@@ -7,6 +7,8 @@ export declare abstract class Texture {
     abstract get width(): number;
     abstract get height(): number;
     abstract get label(): string;
+    abstract get format(): GPUTextureFormat;
+    abstract get dimension(): GPUTextureDimension;
 }
 export declare class MappedTexture extends Texture {
     private _descriptor;
@@ -20,6 +22,8 @@ export declare class MappedTexture extends Texture {
     get width(): number;
     get height(): number;
     get label(): string;
+    get format(): GPUTextureFormat;
+    get dimension(): GPUTextureDimension;
 }
 export declare class DefaultTexture extends Texture {
     static instance: DefaultTexture;
@@ -32,6 +36,8 @@ export declare class DefaultTexture extends Texture {
     get descriptor(): GPUTextureDescriptor;
     get view(): GPUTextureView;
     get label(): string;
+    get format(): GPUTextureFormat;
+    get dimension(): GPUTextureDimension;
     upload(device: GPUDevice): void;
     dispose(): void;
 }
@@ -49,6 +55,8 @@ export declare class ImageTexture extends Texture {
     get descriptor(): GPUTextureDescriptor;
     get view(): GPUTextureView;
     get label(): string;
+    get format(): GPUTextureFormat;
+    get dimension(): GPUTextureDimension;
     upload(device: GPUDevice): void;
     dispose(): void;
 }
