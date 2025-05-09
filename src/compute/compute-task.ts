@@ -22,7 +22,7 @@ export interface ComputeTaskOptions {
   label?: string;
   shader: GPUShaderModule;
   entryPoint: string;
-  workgroupSize: Vec3;
+  dispatchCount: Vec3;
   buffers?: ComputeBufferObj[];
   textures?: ComputeTextureObj[];
   samplers: ComputeSamplerObj[];
@@ -70,8 +70,8 @@ export class ComputeTask {
     return this._options.label || "Compute Task";
   }
 
-  get workgroupSize(): Vec3 {
-    return this._options.workgroupSize || vec3.create(8, 8, 1);
+  get dispatchCount(): Vec3 {
+    return this._options.dispatchCount || vec3.create(8, 8, 1);
   }
 
   get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor {
@@ -145,8 +145,6 @@ export class ComputeTask {
       label: `${this.label} BindGroup Layout`,
       entries,
     };
-
-    console.log(JSON.stringify(ret));
 
     return ret;
   }

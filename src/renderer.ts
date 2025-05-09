@@ -287,7 +287,7 @@ export class Renderer {
 
     for (const task of tasks) {
       const pipeline = this.computePipelineFor(task);
-      const size = task.workgroupSize;
+      const size = task.dispatchCount;
       const bg = task.getBindGroup(this.device);
 
       passEncoder.setPipeline(pipeline);
