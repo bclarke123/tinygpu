@@ -168,7 +168,6 @@ export class ComputeTask {
 
     if (textures?.length > 0) {
       for (let i = 0; i < textures?.length; i++) {
-        console.log(textures[i]);
         entries.push({
           binding,
           resource: textures[i].texture.view,
@@ -188,8 +187,6 @@ export class ComputeTask {
         binding++;
       }
     }
-
-    console.log(entries);
 
     return entries;
   }

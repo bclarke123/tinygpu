@@ -75,8 +75,6 @@ export class Renderer {
 
     this.format = navigator.gpu.getPreferredCanvasFormat();
 
-    console.log(this.format);
-
     this.context.configure({
       device: this.device!,
       format: this.format,
