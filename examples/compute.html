@@ -63,12 +63,14 @@
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let textureDims = textureDimensions(inputTexture);
+
     if (global_id.x >= textureDims.x || global_id.y >= textureDims.y) {
         return; // Out of bounds check
     }
 
+    let uv = vec2<f32>(global_id.xy) / vec2<f32>(textureDims);
     let texelCoords = vec2<i32>(global_id.xy);
-    var color = textureSampleLevel(inputTexture, aSampler, vec2<f32>(global_id.xy) / vec2<f32>(textureDims), 0);
+    let color = textureSampleLevel(inputTexture, aSampler, uv, 0);
 
     // Example: Invert color
     let newcol = vec3(1.0) - color.rgb;
