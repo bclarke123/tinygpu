@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
     <head>
-        <title>tinygpu example: Hello World</title>
+        <title>tinygpu example: Invert an image in a compute shader</title>
         <style type="text/css">
             body {
                 margin: 0;
@@ -35,7 +35,7 @@
                 const camera = renderer.createOrthographicCamera();
 
                 const tex = await renderer.loadImageTexture(
-                    "https://assets.codepen.io/1082534/141601-2560x1600-desktop-hd-ocean-wallpaper-image.jpg",
+                    "./matthew-stephenson-8VvxbqE8ZX0-unsplash.jpg",
                 );
 
                 const target = renderer.createTexture({
@@ -55,41 +55,39 @@
 
                 const shader = renderer.createShaderModule({
                     code: /* wgsl */ `
-                    @group(0) @binding(0) var tex_sampler: sampler;
-                    @group(0) @binding(1) var input_texture: texture_2d<f32>;
-                    @group(0) @binding(2) var output_texture: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(0) var aSampler: sampler;
+@group(0) @binding(1) var inputTexture: texture_2d<f32>;
+@group(0) @binding(2) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 
-                    @compute @workgroup_size(8, 8, 1) // Or your preferred workgroup size
-                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-                        let texture_dims: vec2<u32> = textureDimensions(input_texture);
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let textureDims = textureDimensions(inputTexture);
+    if (global_id.x >= textureDims.x || global_id.y >= textureDims.y) {
+        return; // Out of bounds check
+    }
 
-                        // Boundary check
-                        if (global_id.x >= texture_dims.x || global_id.y >= texture_dims.y) {
-                            return;
-                        }
+    let texelCoords = vec2<i32>(global_id.xy);
+    var color = textureSampleLevel(inputTexture, aSampler, vec2<f32>(global_id.xy) / vec2<f32>(textureDims), 0);
 
-                        // Calculate normalized UV coordinates
-                        let uv_coords: vec2<f32> = vec2<f32>(global_id.xy) / vec2<f32>(texture_dims);
+    // Example: Invert color
+    let newcol = vec3(1.0) - color.rgb;
 
-                        // Sample the input texture
-                        var color_val: vec4<f32> = textureSample(input_texture, tex_sampler, uv_coords);
-
-                        // Invert the color (RGB channels)
-                        color_val.r = 1.0 - color_val.r;
-                        color_val.g = 1.0 - color_val.g;
-                        color_val.b = 1.0 - color_val.b;
-                        // Alpha remains unchanged: color_val.a = color_val.a;
-
-                        // Store the result in the output texture
-                        // textureStore requires integer coordinates for the texel
-                        textureStore(output_texture, vec2<i32>(global_id.xy), color_val);
-                    }
+    textureStore(outputTexture, texelCoords, vec4(newcol, 1.0));
+}
 
                   `,
                 });
 
+                // @workgroup_size(8, 8, 1) in shader above
+                const dispatchCount = [
+                    Math.ceil(tex.width / 8),
+                    Math.ceil(tex.height / 8),
+                    1
+                ];
+
                 const task = new tinygpu.compute.ComputeTask({
                     shader,
+                    dispatchCount,
                     samplers: [{ type: "filtering", sampler }],
                     textures: [
                         {
