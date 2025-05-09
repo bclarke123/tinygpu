@@ -6,6 +6,7 @@ export declare abstract class Texture {
     abstract dispose(): void;
     abstract get width(): number;
     abstract get height(): number;
+    abstract get label(): string;
 }
 export declare class DefaultTexture extends Texture {
     static instance: DefaultTexture;
@@ -17,6 +18,7 @@ export declare class DefaultTexture extends Texture {
     get height(): number;
     get descriptor(): GPUTextureDescriptor;
     get view(): GPUTextureView;
+    get label(): string;
     upload(device: GPUDevice): void;
     dispose(): void;
 }
@@ -33,6 +35,7 @@ export declare class ImageTexture extends Texture {
     get height(): number;
     get descriptor(): GPUTextureDescriptor;
     get view(): GPUTextureView;
+    get label(): string;
     upload(device: GPUDevice): void;
     dispose(): void;
 }

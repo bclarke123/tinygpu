@@ -7,6 +7,7 @@ export abstract class Texture {
   abstract dispose(): void;
   abstract get width(): number;
   abstract get height(): number;
+  abstract get label(): string;
 }
 
 export class DefaultTexture extends Texture {
@@ -46,6 +47,10 @@ export class DefaultTexture extends Texture {
 
     this._textureView ??= this._texture.createView();
     return this._textureView;
+  }
+
+  get label(): string {
+    return "Default Texture";
   }
 
   upload(device: GPUDevice): void {
@@ -130,6 +135,10 @@ export class ImageTexture extends Texture {
 
     this._textureView ??= this._texture.createView();
     return this._textureView;
+  }
+
+  get label(): string {
+    return `ImageTexture ${this.src}`;
   }
 
   upload(device: GPUDevice): void {

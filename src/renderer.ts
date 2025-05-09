@@ -251,21 +251,50 @@ export class Renderer {
     });
 
     passEncoder.end();
-    this.device!.queue.submit([commandEncoder.finish()]);
+    this.device.queue.submit([commandEncoder.finish()]);
   }
 
-  async computePipelineFor(task: ComputeTask): Promise<GPUComputePipeline> {
-    const layout = this.device.createPipelineLayout(task.getPipelineLayout(this.device));
+  computePipelineFor(task: ComputeTask): GPUComputePipeline {
+    if (!this._computePipelineCache[task.cacheKey]) {
+      const bgl = task.getBindGroupLayout(this.device);
 
-    return await this.device.createComputePipelineAsync({
-      layout,
-      compute: {
-        module: task.shaderModule
-      }
-    });
+      const layout = this.device.createPipelineLayout({
+        label: `${task.label} Pipeline Layout`,
+        bindGroupLayouts: [bgl]
+      });
+
+      const ret = this.device.createComputePipeline({
+        layout,
+        compute: {
+          module: task.shaderModule
+        }
+      });
+
+      this._computePipelineCache[task.cacheKey] = ret;
+    }
+
+    return this._computePipelineCache[task.cacheKey];
   }
 
-  compute(tasks: ComputeTask[]) { }
+  compute(tasks: ComputeTask[]) {
+    const commandEncoder = this.device.createCommandEncoder();
+    const passEncoder = commandEncoder.beginComputePass();
+
+    for (const task of tasks) {
+      const pipeline = this.computePipelineFor(task);
+      const size = task.workgroupSize;
+      const bg = task.getBindGroup(this.device);
+
+      passEncoder.setPipeline(pipeline);
+      passEncoder.setBindGroup(0, bg);
+
+      passEncoder.dispatchWorkgroups(size[0], size[1], size[2]);
+    }
+
+    passEncoder.end()
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
 
   public createMaterial<T extends Material, O>(
     c: new (device: GPUDevice, o?: O) => T,
