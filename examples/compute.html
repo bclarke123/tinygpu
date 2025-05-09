@@ -93,14 +93,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                     textures: [
                         {
                             accessType: "sample",
-                            format: tex._texture.format,
-                            dimension: "2d",
                             texture: tex,
                         },
                         {
                             accessType: "storageWrite",
-                            format: target._texture.format,
-                            dimension: "2d",
                             texture: target,
                         },
                     ],
