@@ -7,6 +7,9 @@ export interface ComputeBufferObj {
 export interface ComputeTextureObj {
     layout: GPUTextureBindingLayout;
     texture: Texture;
+    accessType: "sample" | "storageRead" | "storageWrite";
+    format?: GPUTextureFormat;
+    dimension?: GPUTextureViewDimension;
 }
 export interface ComputeSamplerObj {
     type: GPUSamplerBindingType;

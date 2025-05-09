@@ -9,6 +9,9 @@ export interface ComputeBufferObj {
 export interface ComputeTextureObj {
   layout: GPUTextureBindingLayout;
   texture: Texture;
+  accessType: "sample" | "storageRead" | "storageWrite";
+  format?: GPUTextureFormat;
+  dimension?: GPUTextureViewDimension;
 }
 
 export interface ComputeSamplerObj {
@@ -84,8 +87,8 @@ export class ComputeTask {
           binding,
           visibility: GPUShaderStage.COMPUTE,
           sampler: {
-            type: samplers[i].type
-          }
+            type: samplers[i].type,
+          },
         });
 
         binding++;
@@ -94,15 +97,30 @@ export class ComputeTask {
 
     if (textures?.length > 0) {
       for (let i = 0; i < textures?.length; i++) {
-        entries.push({
-          binding,
-          visibility: GPUShaderStage.COMPUTE,
-          texture: {
-            sampleType: "float",
-            viewDimension: "2d",
-            multisampled: false,
-          },
-        });
+        if (textures[i].accessType === "sample") {
+          entries.push({
+            binding,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: {
+              sampleType: "float",
+              viewDimension: textures[i].dimension,
+              multisampled: false,
+            },
+          });
+        } else {
+          entries.push({
+            binding,
+            visibility: GPUShaderStage.COMPUTE,
+            storageTexture: {
+              access:
+                textures[i].accessType === "storageWrite"
+                  ? "write-only"
+                  : "read-only",
+              format: textures[i].format,
+              viewDimension: textures[i].dimension,
+            },
+          });
+        }
 
         binding++;
       }
@@ -113,7 +131,7 @@ export class ComputeTask {
         entries.push({
           binding,
           visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: buffers[i].type }
+          buffer: { type: buffers[i].type },
         });
 
         binding++;
@@ -122,7 +140,7 @@ export class ComputeTask {
 
     return {
       label: `${this.label} BindGroup Layout`,
-      entries
+      entries,
     };
   }
 
@@ -136,7 +154,7 @@ export class ComputeTask {
       for (let i = 0; i < samplers?.length; i++) {
         entries.push({
           binding,
-          resource: samplers[i].sampler
+          resource: samplers[i].sampler,
         });
 
         binding++;
@@ -158,7 +176,7 @@ export class ComputeTask {
       for (let i = 0; i < buffers?.length; i++) {
         entries.push({
           binding,
-          resource: { buffer: buffers[i].buffer }
+          resource: { buffer: buffers[i].buffer },
         });
 
         binding++;
@@ -173,7 +191,9 @@ export class ComputeTask {
       return this._bindGroupLayout;
     }
 
-    this._bindGroupLayout = device.createBindGroupLayout(this.bindGroupLayoutDescriptor);
+    this._bindGroupLayout = device.createBindGroupLayout(
+      this.bindGroupLayoutDescriptor,
+    );
 
     return this._bindGroupLayout;
   }
@@ -186,7 +206,7 @@ export class ComputeTask {
     this._bindGroup = device.createBindGroup({
       label: this.label,
       layout: this._bindGroupLayout,
-      entries: this.bindGroupEntries
+      entries: this.bindGroupEntries,
     });
 
     return this._bindGroup;
