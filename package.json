@@ -28,7 +28,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npx webpack"
+    "build": "NODE_ENV=production npx webpack"
   },
   "dependencies": {
     "wgpu-matrix": "^3.4.0"
