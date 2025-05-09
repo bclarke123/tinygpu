@@ -9,6 +9,7 @@ export abstract class Texture {
   abstract get height(): number;
   abstract get label(): string;
   abstract get format(): GPUTextureFormat;
+  abstract get dimension(): GPUTextureDimension;
 }
 
 export class MappedTexture extends Texture {
@@ -46,6 +47,10 @@ export class MappedTexture extends Texture {
   }
   get format(): GPUTextureFormat {
     return this._texture.format;
+  }
+
+  get dimension(): GPUTextureDimension {
+    return this._texture.dimension;
   }
 }
 
@@ -94,6 +99,10 @@ export class DefaultTexture extends Texture {
 
   get format(): GPUTextureFormat {
     return this._texture.format;
+  }
+
+  get dimension(): GPUTextureDimension {
+    return this._texture.dimension;
   }
 
   upload(device: GPUDevice): void {
@@ -186,6 +195,10 @@ export class ImageTexture extends Texture {
 
   get format(): GPUTextureFormat {
     return this._texture.format;
+  }
+
+  get dimension(): GPUTextureDimension {
+    return this._texture.dimension;
   }
 
   upload(device: GPUDevice): void {

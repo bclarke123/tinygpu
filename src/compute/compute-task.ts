@@ -96,32 +96,36 @@ export class ComputeTask {
 
     if (textures?.length > 0) {
       for (let i = 0; i < textures?.length; i++) {
-        if (textures[i].accessType === "sample") {
+        const tex = textures[i];
+        const viewDimension = tex.dimension || tex.texture.dimension;
+
+        if (tex.accessType === "sample") {
           entries.push({
             binding,
             visibility: GPUShaderStage.COMPUTE,
             texture: {
               sampleType: "float",
-              viewDimension: textures[i].dimension,
+              viewDimension,
               multisampled: false,
             },
           });
         } else {
-          const { accessType } = textures[i];
+          const { accessType } = tex;
           const access =
             accessType === "storageReadWrite"
               ? "read-write"
               : accessType === "storageWrite"
                 ? "write-only"
                 : "read-only";
-          const format = textures[i].format || textures[i].texture.format
+          const format = tex.format || tex.texture.format;
+
           entries.push({
             binding,
             visibility: GPUShaderStage.COMPUTE,
             storageTexture: {
               access,
               format,
-              viewDimension: textures[i].dimension,
+              viewDimension,
             },
           });
         }
