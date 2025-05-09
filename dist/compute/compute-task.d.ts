@@ -18,7 +18,7 @@ export interface ComputeTaskOptions {
     label?: string;
     shader: GPUShaderModule;
     entryPoint: string;
-    workgroupSize: Vec3;
+    dispatchCount: Vec3;
     buffers?: ComputeBufferObj[];
     textures?: ComputeTextureObj[];
     samplers: ComputeSamplerObj[];
@@ -32,7 +32,7 @@ export declare class ComputeTask {
     get cacheKey(): string;
     get shaderModule(): GPUShaderModule;
     get label(): string;
-    get workgroupSize(): Vec3;
+    get dispatchCount(): Vec3;
     get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor;
     get bindGroupEntries(): GPUBindGroupEntry[];
     getBindGroupLayout(device: GPUDevice): GPUBindGroupLayout;
