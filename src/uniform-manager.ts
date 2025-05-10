@@ -28,9 +28,6 @@ export class UniformManager {
     updateUniform(uniform: UniformItem) {
         const toUpdate = this._uniforms?.find((u) => u.name === uniform.name);
         toUpdate.value = uniform.value;
-        if ("time" === uniform.name) {
-            console.log(uniform, toUpdate);
-        }
         this.setUniformsDirty();
     }
 
