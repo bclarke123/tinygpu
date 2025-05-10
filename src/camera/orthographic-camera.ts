@@ -55,7 +55,8 @@ export class OrthographicCamera extends Camera {
     // --- Methods to Update Matrices ---
 
     override updateProjectionMatrix(): void {
-        console.log("Updating Orthographic Projection Matrix using wgpu-matrix"); // For debugging
+        // console.trace();
+        console.log("Updating Orthographic Projection Matrix"); // For debugging
         // Use wgpu-matrix ortho function
         // mat4.ortho(left, right, bottom, top, near, far, destinationMatrix?)
         // It returns a new matrix if destination is not provided.
@@ -73,7 +74,7 @@ export class OrthographicCamera extends Camera {
     }
 
     override updateViewMatrix(): void {
-        console.log("Updating View Matrix using wgpu-matrix"); // For debugging
+        console.log("Updating Orthographic View Matrix"); // For debugging
         // Use wgpu-matrix lookAt function
         this._viewMatrix = mat4.lookAt(
             this.position,

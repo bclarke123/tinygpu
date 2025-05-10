@@ -23,6 +23,8 @@ export class UniformManager {
         this._uniforms = uniforms;
         this._textures = textures;
         this._label = label;
+        this._uniformDirty = true;
+        this._texturesDirty = true;
     }
 
     updateUniform(uniform: UniformItem) {

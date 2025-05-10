@@ -85,11 +85,17 @@ export class Renderer {
       const width = this.canvas.offsetWidth;
       const height = this.canvas.offsetHeight;
 
+      if (width === this.canvasSize[0] && height === this.canvasSize[1]) {
+        return;
+      }
+
       this.canvas.width = width;
       this.canvas.height = height;
 
       this.canvasSize.set([width, height]);
       this.sizeDirty = true;
+
+      // console.log("Canvas size", width, height);
 
       this.depthTexture?.destroy();
       this.depthTexture = this.device.createTexture({
@@ -104,9 +110,9 @@ export class Renderer {
       });
     };
 
-    onResize();
     this.resizeObserver = new ResizeObserver(onResize);
     this.resizeObserver.observe(this.canvas);
+    onResize();
 
     console.log("Canvas initialized");
   }
@@ -203,6 +209,9 @@ export class Renderer {
   }
 
   render(scene: Scene, camera: Camera) {
+
+    console.log("render()");
+
     const [width, height] = this.canvasSize;
 
     const outputTexture = this.context.getCurrentTexture();
