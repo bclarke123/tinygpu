@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+    <head>
+        <title>tinygpu example: Fluid Sim</title>
+        <style type="text/css">
+            body {
+                margin: 0;
+                overflow: hidden;
+            }
+
+            canvas {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+            }
+        </style>
+    </head>
+
+    <body>
+        <canvas id="canvas"></canvas>
+        <script src="../dist/index.js"></script>
+        <script>
+            document.addEventListener("DOMContentLoaded", async () => {
+                const canvas = document.getElementById("canvas");
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                const renderer = new tinygpu.Renderer({ canvas });
+                await renderer.init();
+
+                const scene = renderer.createScene();
+                const camera = renderer.createOrthographicCamera();
+
+                const sim = new tinygpu.fluid.FluidSimulation(renderer);
+                sim.tick();
+
+                const geo = renderer.createGeometry(
+                    tinygpu.geometry.BigTriangle,
+                );
+                const mat = renderer.createMaterial(
+                    tinygpu.material.BasicMaterial,
+                    {
+                        map: target,
+                    },
+                );
+                const mesh = renderer.createMesh(geo, mat);
+
+                scene.add(mesh);
+
+                renderer.render(scene, camera);
+            });
+        </script>
+    </body>
+</html>
