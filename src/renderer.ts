@@ -117,7 +117,7 @@ export class Renderer {
 
   createBuffer<T extends Float32Array | Uint32Array | Uint16Array | Uint8Array>(
     arr: T,
-    usage: number,
+    usage: GPUBufferUsageFlags,
   ): GPUBuffer {
     const buffer = this.device!.createBuffer({
       size: (arr.byteLength + 3) & ~3,
@@ -142,6 +142,13 @@ export class Renderer {
     buffer.unmap();
 
     return buffer;
+  }
+
+  createSizedBuffer(size: number, usage: GPUBufferUsageFlags): GPUBuffer {
+    return this.device.createBuffer({
+      size,
+      usage,
+    });
   }
 
   pipelineFor(scene: Scene, mesh: Mesh): GPURenderPipeline {
