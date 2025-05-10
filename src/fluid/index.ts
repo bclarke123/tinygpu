@@ -5,7 +5,7 @@ import { Renderer } from "../renderer";
 import stage1Shader from "../shaders/fluid/stage1.wgsl";
 import stage2Shader from "../shaders/fluid/stage2.wgsl";
 import stage3Shader from "../shaders/fluid/stage3.wgsl";
-import { packUniforms, UniformItem, UniformValue, uploadUniformBuffer } from "../uniform-utils";
+import { packUniforms, UniformValue, uploadUniformBuffer } from "../uniform-utils";
 
 // interface Particle {
 //   position: Vec3;
@@ -201,18 +201,23 @@ export class FluidSimulation {
   }
 
   initializeParticleBuffer() {
+
+    const now = performance.now();
+
     const value: { [k: string]: UniformValue } = {
       position: vec3.create(),
       velocity: vec3.create(),
       affineMatrixC: mat3.create(),
       deformationGradientF: mat3.identity<Float32Array>(),
-      Jf: 0,
-      Jp: 0,
-      mass: 0,
+      Jf: 1.0,
+      Jp: 1.0,
+      mass: this.options.particleMass,
       materialIndex: 0,
     };
 
     const members = Object.keys(value).map((k) => ({ name: k }));
+
+    console.log(value);
 
     const packed = packUniforms([
       {
@@ -229,25 +234,31 @@ export class FluidSimulation {
     const buf = new Uint8Array(particleBufferSize);
 
     const scale = 0.1;
-    const posBuf = vec3.create();
+    const pos = vec3.create();
+    const posBuf = new Uint8Array(pos.buffer);
+
     const sideLen = Math.ceil(Math.cbrt(this.options.particles));
 
     for (let i = 0; i < this.options.particles; i++) {
-      const x = Math.floor(i / (sideLen * sideLen));
-      const y = Math.floor((i % (sideLen * sideLen)) / sideLen);
-      const z = i % sideLen;
+      const x = Math.floor(i / (sideLen * sideLen)) - sideLen * 0.5;
+      const y = Math.floor((i % (sideLen * sideLen)) / sideLen) - sideLen * 0.5;
+      const z = (i % sideLen) - sideLen * 0.5;
 
-      posBuf.set([x, y, z]);
+      pos.set([x, y, z]);
       vec3.mulScalar(posBuf, scale);
 
-      packedArr.set(posBuf, i * particleSize);
+      packedArr.set(posBuf, 0);
       buf.set(packedArr, i * particleSize);
     }
 
-    return this.renderer.createBuffer(
+    const ret = this.renderer.createBuffer(
       buf,
       GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
     );
+
+    console.log(`Created position buffer in ${(performance.now() - now)}ms`);
+
+    return ret;
   }
 
   tick() {
