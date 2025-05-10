@@ -1,5 +1,5 @@
 import { Material } from "./material";
-import { UniformObj } from "../uniform-utils";
+import { UniformItem } from "../uniform-utils";
 import { Texture } from "../texture";
 import { UniformManager } from "../uniform-manager";
 
@@ -7,7 +7,7 @@ import shaderHeader from "../shaders/header.wgsl";
 
 export interface ShaderMaterialOptions {
   code: string;
-  uniforms?: UniformObj[];
+  uniforms?: UniformItem[];
   textures?: Texture[];
 }
 

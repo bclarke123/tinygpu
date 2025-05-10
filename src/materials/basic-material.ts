@@ -20,7 +20,7 @@ export class BasicMaterial extends Material {
       [
         {
           name: "color",
-          value: (options.color || new Color(1, 1, 1)).uniformValue(),
+          value: options.color || new Color(1, 1, 1),
         },
       ],
       [options.map || DefaultTexture.instance],
