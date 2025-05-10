@@ -115,7 +115,7 @@ export class Renderer {
     return this.device.createShaderModule(descriptor);
   }
 
-  createBuffer<T extends Float32Array | Uint16Array | Uint8Array>(
+  createBuffer<T extends Float32Array | Uint32Array | Uint16Array | Uint8Array>(
     arr: T,
     usage: number,
   ): GPUBuffer {
@@ -127,6 +127,9 @@ export class Renderer {
 
     if (arr instanceof Float32Array) {
       const writeArray = new Float32Array(buffer.getMappedRange());
+      writeArray.set(arr);
+    } else if (arr instanceof Uint32Array) {
+      const writeArray = new Uint32Array(buffer.getMappedRange());
       writeArray.set(arr);
     } else if (arr instanceof Uint16Array) {
       const writeArray = new Uint16Array(buffer.getMappedRange());
