@@ -25,7 +25,7 @@ export interface ComputeTaskOptions {
   dispatchCount: Vec3;
   buffers?: ComputeBufferObj[];
   textures?: ComputeTextureObj[];
-  samplers: ComputeSamplerObj[];
+  samplers?: ComputeSamplerObj[];
 }
 
 export class ComputeTask {
