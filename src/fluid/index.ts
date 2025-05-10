@@ -1,4 +1,4 @@
-import { mat3, Mat3, mat3n, Vec3, vec3 } from "wgpu-matrix";
+import { mat3, vec3 } from "wgpu-matrix";
 import { ComputeTask } from "../compute/compute-task";
 import { Renderer } from "../renderer";
 
