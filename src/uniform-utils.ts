@@ -1,185 +1,287 @@
-import { Color } from "./color";
+import { Color } from "./color"; // Assuming Color class exists and has a uniformValue() method
 
-export type UniformObj = { name: string; value: number | Float32Array | Color };
+// --- Type Definitions for Uniforms ---
 
-interface Std140LayoutInfo {
-  align: number; // Alignment requirement in bytes
-  size: number; // Actual data size in bytes (doesn't include internal padding for matrices/arrays)
-  advanceAmount: number; // Bytes to advance the offset after this item (includes padding)
-  paddedStride: number; // Stride for elements within the type (e.g., matrix columns), in bytes. Equal to advanceAmount for non-composite types.
+export type UniformValue =
+  | number
+  | Float32Array // For vecN, matN
+  | Color
+  | { [key: string]: UniformValue }; // For structs
+
+// Describes a member *within* a struct's layout definition
+export interface UniformLayoutMember {
+  name: string;
+  // 'type' is optional for base types (f32, vecN, matN, Color) within a struct,
+  // as it can be inferred from the provided 'value' for that member.
+  // 'type' is REQUIRED if this member is itself a struct (to name that struct type).
+  type?: string;
+  // 'members' is used if this member is an INLINE struct definition.
+  // If 'members' is present, 'type' (as the name of this inline struct) MUST also be present.
+  members?: UniformLayoutMember[];
 }
 
-// Map WGSL types to their std140 layout info, now including advanceAmount and paddedStride for all
-const STD140_LAYOUT_INFO: Record<string, Std140LayoutInfo> = {
-  // type: { align, size, advanceAmount, paddedStride }
-  f32: { align: 4, size: 4, advanceAmount: 4, paddedStride: 4 },
-  vec2: { align: 8, size: 8, advanceAmount: 8, paddedStride: 8 },
-  vec3: { align: 16, size: 12, advanceAmount: 16, paddedStride: 16 }, // Aligns to 16, data size 12, occupies 16
-  vec4: { align: 16, size: 16, advanceAmount: 16, paddedStride: 16 },
-  color: { align: 16, size: 16, advanceAmount: 16, paddedStride: 16 },
-  mat3: { align: 16, size: 36, advanceAmount: 48, paddedStride: 16 }, // Size 9*4=36, 3 cols * 16 bytes/col stride = 48 bytes advance
-  mat4: { align: 16, size: 64, advanceAmount: 64, paddedStride: 16 }, // Size 16*4=64, 4 cols * 16 bytes/col stride = 64 bytes advance
+// Describes a top-level uniform item to be packed
+export interface UniformItem {
+  name: string;
+  value: UniformValue;
+  // 'type' is optional for base types (will be inferred).
+  // Required for struct types to name them (for layout caching and reuse).
+  type?: string;
+  // 'members' is used if this item is a struct definition.
+  // If 'members' is present, 'type' (as the name of this struct) MUST also be present.
+  members?: UniformLayoutMember[];
+}
+
+// --- std140 Layout Information ---
+
+interface Std140LayoutInfo {
+  align: number;
+  size: number;           // Actual data size for base types; total padded size for structs.
+  advanceAmount: number;
+  paddedStride?: number;  // For matrix columns.
+  isStruct?: boolean;
+  membersLayout?: { [name: string]: MemberLayoutInfo };
+  typeName?: string; // Explicit name of the base type or struct type (e.g., "f32", "vec3", "MyStruct")
+}
+
+interface MemberLayoutInfo extends Std140LayoutInfo {
+  relativeOffset: number; // Offset relative to the start of its parent struct.
+}
+
+const BASE_TYPE_LAYOUT_INFO: Record<string, Std140LayoutInfo> = {
+  f32: { typeName: "f32", align: 4, size: 4, advanceAmount: 4 },
+  i32: { typeName: "i32", align: 4, size: 4, advanceAmount: 4 },
+  u32: { typeName: "u32", align: 4, size: 4, advanceAmount: 4 },
+  vec2: { typeName: "vec2", align: 8, size: 8, advanceAmount: 8 },
+  vec3: { typeName: "vec3", align: 16, size: 12, advanceAmount: 16 },
+  vec4: { typeName: "vec4", align: 16, size: 16, advanceAmount: 16 },
+  color: { typeName: "color", align: 16, size: 16, advanceAmount: 16 }, // Treated like vec4
+  mat3: { typeName: "mat3", align: 16, size: 36, advanceAmount: 48, paddedStride: 16 },
+  mat4: { typeName: "mat4", align: 16, size: 64, advanceAmount: 64, paddedStride: 16 },
 };
 
-// Helper to determine the WGSL type string from a JavaScript value
-function getDataType(item: UniformObj): string {
-  if (typeof item.value === "number") {
+const computedStructLayoutCache: Record<string, Std140LayoutInfo> = {};
+
+/**
+ * Infers the WGSL base data type from a JavaScript value.
+ */
+function getDataTypeFromValue(value: UniformValue, itemName: string): string {
+  if (typeof value === "number") {
     return "f32";
-  } else if (item.value instanceof Color) {
+  } else if (value instanceof Color) {
     return "color";
-  } else if (item.value instanceof Float32Array) {
-    switch (item.value.length) {
-      case 2:
-        return "vec2";
-      case 3:
-        return "vec3";
-      case 4:
-        return "vec4";
-      case 9:
-        return "mat3";
-      case 16:
-        return "mat4";
+  } else if (value instanceof Float32Array) {
+    switch (value.length) {
+      case 2: return "vec2";
+      case 3: return "vec3";
+      case 4: return "vec4";
+      case 9: return "mat3";
+      case 16: return "mat4";
       default:
         throw new Error(
-          `Unsupported Float32Array length in item ${item.name} for uniform packing: ${item.value.length}`,
+          `Unsupported Float32Array length for item "${itemName}" for type inference: ${value.length}`,
         );
     }
-  } else {
-    throw new Error(
-      `Unsupported data type in item ${item.name} for uniform packing: ${typeof item.value}`,
-    );
+  }
+  // This function should not be called for structs, as their type must be explicit or defined with 'members'.
+  throw new Error(
+    `Cannot infer base type for item "${itemName}". Value type: ${typeof value}. If it's a struct, its 'type' (and 'members' if new) must be defined.`,
+  );
+}
+
+function getLayoutInfo(item: UniformItem): Std140LayoutInfo {
+  let typeNameToUse = item.type;
+  const members = item.members;
+  const itemName = item.name; // For error messages
+
+  if (members) { // It's a struct definition or a struct type with members provided
+    if (!typeNameToUse) {
+      throw new Error(`Struct item "${itemName}" must have a 'type' property defining its name when 'members' are provided.`);
+    }
+    if (computedStructLayoutCache[typeNameToUse]) {
+      return computedStructLayoutCache[typeNameToUse];
+    }
+
+    let currentStructOffset = 0;
+    let structMaxMemberAlign = 0;
+    const memberLayouts: { [name: string]: MemberLayoutInfo } = {};
+    const structValueObject = item.value as { [key: string]: UniformValue };
+
+    if (typeof item.value !== 'object' || item.value === null || Array.isArray(item.value)) {
+      throw new Error(`Value for struct "${itemName}" must be an object when 'members' are defined for layout calculation.`);
+    }
+
+    for (const memberDef of members) { // memberDef is UniformLayoutMember
+      const memberName = memberDef.name;
+      const memberVal = structValueObject[memberName];
+      if (memberVal === undefined && !memberDef.type && !memberDef.members) { // Only error if value is needed for inference
+        throw new Error(`Value for struct member "${memberName}" of struct "${typeNameToUse}" not provided, and type cannot be inferred.`);
+      }
+
+      let memberTypeString = memberDef.type;
+      if (!memberTypeString && !memberDef.members) { // Infer if base type and no explicit type
+        if (memberVal === undefined) throw new Error(`Value for struct member "${memberName}" needed for type inference.`);
+        memberTypeString = getDataTypeFromValue(memberVal, `${itemName}.${memberName}`);
+      } else if (!memberTypeString && memberDef.members) { // Inline nested struct definition without a type name for itself
+        throw new Error(`Inline nested struct member "${memberName}" within "${typeNameToUse}" must have its own 'type' (name) defined.`);
+      }
+
+
+      const memberItemForLayout: UniformItem = {
+        name: memberName,
+        value: memberVal, // Pass the actual value
+        type: memberTypeString, // Use explicit or inferred type
+        members: memberDef.members // Pass nested struct definition if provided
+      };
+
+      const memberLayout = getLayoutInfo(memberItemForLayout);
+      structMaxMemberAlign = Math.max(structMaxMemberAlign, memberLayout.align);
+
+      const memberAlign = memberLayout.align;
+      const padding = (memberAlign - (currentStructOffset % memberAlign)) % memberAlign;
+      currentStructOffset += padding;
+
+      memberLayouts[memberName] = {
+        ...memberLayout,
+        relativeOffset: currentStructOffset,
+      };
+      currentStructOffset += memberLayout.advanceAmount;
+    }
+
+    const structAlign = structMaxMemberAlign;
+    const finalStructPadding = (structAlign - (currentStructOffset % structAlign)) % structAlign;
+    const structTotalSize = currentStructOffset + finalStructPadding;
+
+    const structLayout: Std140LayoutInfo = {
+      align: structAlign,
+      size: structTotalSize,
+      advanceAmount: structTotalSize,
+      isStruct: true,
+      membersLayout: memberLayouts,
+      typeName: typeNameToUse,
+    };
+    computedStructLayoutCache[typeNameToUse] = structLayout;
+    return structLayout;
+
+  } else if (typeNameToUse) { // Type is explicitly provided, not a new struct definition with members
+    if (BASE_TYPE_LAYOUT_INFO[typeNameToUse]) {
+      return BASE_TYPE_LAYOUT_INFO[typeNameToUse];
+    }
+    if (computedStructLayoutCache[typeNameToUse]) { // It's a pre-defined struct type
+      return computedStructLayoutCache[typeNameToUse];
+    }
+    throw new Error(`Unknown explicit type "${typeNameToUse}" for item "${itemName}" and not a defined struct in cache.`);
+
+  } else { // No type, no members - infer base type from value
+    const inferredType = getDataTypeFromValue(item.value, itemName);
+    if (BASE_TYPE_LAYOUT_INFO[inferredType]) {
+      return BASE_TYPE_LAYOUT_INFO[inferredType];
+    }
+    throw new Error(`Could not get layout for inferred type "${inferredType}" for item "${itemName}".`);
   }
 }
 
 export function packUniforms(
-  items: UniformObj[],
+  items: UniformItem[],
   targetBuffer?: ArrayBuffer,
   targetOffset: number = 0,
 ): ArrayBuffer {
-  let currentOffset = 0;
-  let maxAlignment = 0;
-  // Store layout info including the calculated offset relative to the start of packing
-  const itemLayouts: {
-    relativeOffset: number;
-    size: number;
-    type: string;
-    data: UniformObj;
-    paddedStride: number;
-  }[] = [];
+  let currentBufferOffset = 0;
+  let maxBufferAlignment = 0;
+  const itemLayoutsWithOffsets: (MemberLayoutInfo & { itemData: UniformItem })[] = [];
 
-  if (items.length === 0 && !targetBuffer) {
-    return new ArrayBuffer(0); // Handle empty input when creating new buffer
-  }
-  if (items.length === 0 && targetBuffer) {
-    return targetBuffer; // Nothing to write if items are empty
+  if (items.length === 0) {
+    return targetBuffer || new ArrayBuffer(0);
   }
 
-  // --- First Pass: Calculate relative offsets and total size ---
   for (const item of items) {
-    const type = getDataType(item);
-    const layoutInfo = STD140_LAYOUT_INFO[type];
-    if (!layoutInfo) {
-      throw new Error(`Layout info not defined for type: ${type}`);
-    }
-
-    const itemAlign = layoutInfo.align;
-    const itemSize = layoutInfo.size; // Actual data size
-    maxAlignment = Math.max(maxAlignment, itemAlign);
-
-    // Calculate padding needed BEFORE this item to meet its alignment
-    const padding = (itemAlign - (currentOffset % itemAlign)) % itemAlign;
-    currentOffset += padding;
-
-    // Store layout info for the second pass (writing data)
-    const layoutEntry = {
-      relativeOffset: currentOffset, // Offset relative to the start of packing
-      size: itemSize,
-      type: type,
-      data: item,
-      paddedStride: layoutInfo.paddedStride,
-    };
-    itemLayouts.push(layoutEntry);
-
-    // Advance offset by the pre-calculated amount for this type
-    currentOffset += layoutInfo.advanceAmount;
+    const layoutInfo = getLayoutInfo(item);
+    maxBufferAlignment = Math.max(maxBufferAlignment, layoutInfo.align);
+    const padding = (layoutInfo.align - (currentBufferOffset % layoutInfo.align)) % layoutInfo.align;
+    currentBufferOffset += padding;
+    itemLayoutsWithOffsets.push({
+      ...layoutInfo,
+      relativeOffset: currentBufferOffset,
+      itemData: item,
+    });
+    currentBufferOffset += layoutInfo.advanceAmount;
   }
 
-  // --- Calculate final size needed for packing ---
-  // The total size must be a multiple of the maximum alignment encountered
-  const finalPadding =
-    (maxAlignment - (currentOffset % maxAlignment)) % maxAlignment;
-  const totalSizeNeeded = currentOffset + finalPadding;
+  const finalBufferPadding = (maxBufferAlignment - (currentBufferOffset % maxBufferAlignment)) % maxBufferAlignment;
+  const totalSizeNeededForItems = currentBufferOffset + finalBufferPadding;
 
-  // --- Determine target buffer and base offset for writing ---
   let bufferToWrite: ArrayBuffer;
   let baseWriteOffset: number;
 
   if (targetBuffer) {
-    // Check if the provided buffer is large enough
-    if (targetBuffer.byteLength < targetOffset + totalSizeNeeded) {
-      throw new Error(
-        `Target buffer is too small. Need ${totalSizeNeeded} bytes starting at offset ${targetOffset}, but buffer size is ${targetBuffer.byteLength} bytes.`,
-      );
+    if (targetBuffer.byteLength < targetOffset + totalSizeNeededForItems) {
+      throw new Error(`Target buffer too small. Need ${totalSizeNeededForItems} at offset ${targetOffset}, but buffer has ${targetBuffer.byteLength} bytes.`);
     }
     bufferToWrite = targetBuffer;
     baseWriteOffset = targetOffset;
   } else {
-    // Create a new buffer if none was provided
-    bufferToWrite = new ArrayBuffer(totalSizeNeeded);
+    bufferToWrite = new ArrayBuffer(totalSizeNeededForItems);
     baseWriteOffset = 0;
   }
 
-  // --- Create views for the buffer we are writing to ---
   const bufferView = new DataView(bufferToWrite);
   const bufferAsFloats = new Float32Array(bufferToWrite);
 
-  // --- Second Pass: Write data to the target buffer ---
-  for (const layout of itemLayouts) {
-    // Calculate the absolute byte offset in the target buffer
-    const writeOffset = baseWriteOffset + layout.relativeOffset;
-    const data = layout.data.value as Float32Array; // Cast for convenience, handle number below
-    const type = layout.type;
-
-    switch (type) {
-      case "f32":
-        // Write single float using DataView
-        bufferView.setFloat32(writeOffset, layout.data.value as number, true); // true for littleEndian
-        break;
-      case "color":
-        bufferAsFloats.set((layout.data.value as Color).uniformValue(), writeOffset / 4);
-        break;
-      case "vec2":
-      case "vec4":
-      case "mat4": // mat4 columns are tightly packed in source and dest has same stride
-        // Write Float32Array data directly using Float32Array view
-        // Offset needs to be converted to float elements (writeOffset / 4 bytes_per_float)
-        bufferAsFloats.set(data, writeOffset / 4);
-        break;
-      case "vec3":
-        // Write vec3 data (3 floats) using Float32Array view
-        // The buffer has space for 4 floats allocated, but we only write 3.
-        bufferAsFloats.set(data, writeOffset / 4);
-        break;
-      case "mat3":
-        // Write mat3 data column by column due to padding
-        // Each vec3 column takes 12 bytes of data but occupies 16 bytes stride
-        const columnStrideFloats = layout.paddedStride / 4; // 16 / 4 = 4 floats stride
-        for (let i = 0; i < 3; ++i) {
-          // 3 columns
-          const sourceOffset = i * 3; // Source data is tightly packed (0, 3, 6)
-          // Calculate destination offset in float elements, relative to the start of the buffer
-          const destOffsetFloats = writeOffset / 4 + i * columnStrideFloats;
-          bufferAsFloats.set(
-            data.subarray(sourceOffset, sourceOffset + 3),
-            destOffsetFloats,
-          );
+  function writeDataItem(
+    itemValue: UniformValue,
+    itemLayout: Std140LayoutInfo,
+    currentAbsoluteOffset: number,
+  ) {
+    if (itemLayout.isStruct) {
+      if (typeof itemValue !== 'object' || itemValue === null || Array.isArray(itemValue)) {
+        throw new Error(`Expected an object for struct value "${itemLayout.typeName}", but got ${typeof itemValue}`);
+      }
+      const structValue = itemValue as { [key: string]: UniformValue };
+      for (const memberName in itemLayout.membersLayout) {
+        const memberLayoutInfo = itemLayout.membersLayout[memberName];
+        const memberValue = structValue[memberName];
+        if (memberValue === undefined) {
+          throw new Error(`Value for struct member "${memberName}" of struct "${itemLayout.typeName}" not provided.`);
         }
-        break;
-      // Add cases for other types if supported
+        writeDataItem(memberValue, memberLayoutInfo, currentAbsoluteOffset + memberLayoutInfo.relativeOffset);
+      }
+    } else {
+      switch (itemLayout.typeName) { // Use typeName for direct switch
+        case "f32":
+          bufferView.setFloat32(currentAbsoluteOffset, itemValue as number, true);
+          break;
+        case "color":
+          bufferAsFloats.set((itemValue as Color).uniformValue(), currentAbsoluteOffset / 4);
+          break;
+        case "vec2":
+        case "vec4":
+          bufferAsFloats.set(itemValue as Float32Array, currentAbsoluteOffset / 4);
+          break;
+        case "vec3":
+          bufferAsFloats.set(itemValue as Float32Array, currentAbsoluteOffset / 4);
+          break;
+        case "mat4":
+          bufferAsFloats.set(itemValue as Float32Array, currentAbsoluteOffset / 4);
+          break;
+        case "mat3":
+          const mat3data = itemValue as Float32Array;
+          const columnStrideFloats = itemLayout.paddedStride! / 4;
+          for (let i = 0; i < 3; ++i) {
+            const sourceOffset = i * 3;
+            const destOffsetFloats = (currentAbsoluteOffset / 4) + (i * columnStrideFloats);
+            bufferAsFloats.set(mat3data.subarray(sourceOffset, sourceOffset + 3), destOffsetFloats);
+          }
+          break;
+        default:
+          throw new Error(`Unsupported typeName for writing: "${itemLayout.typeName}" at offset ${currentAbsoluteOffset}`);
+      }
     }
   }
 
-  // Return the buffer (either the one passed in or the newly created one)
+  for (const itemWithOffset of itemLayoutsWithOffsets) {
+    writeDataItem(itemWithOffset.itemData.value, itemWithOffset, baseWriteOffset + itemWithOffset.relativeOffset);
+  }
+
   return bufferToWrite;
 }
 
@@ -205,3 +307,67 @@ export function uploadUniformBuffer(
 
   return buffer;
 }
+
+// --- Example Usage ---
+/*
+const pointLightMembers: UniformLayoutMember[] = [
+    { name: "position", value: new Float32Array([0,0,0]) }, // Type 'vec3' will be inferred
+    { name: "color", value: new Float32Array([0,0,0]) },    // Type 'vec3' will be inferred
+    { name: "intensity", value: 0 }, // Type 'f32' will be inferred
+    { name: "radius", value: 0 },    // Type 'f32' will be inferred
+    // If a member was another struct, e.g., 'attenuation', its 'type' (struct name) would be required:
+    // { name: "attenuation", type: "AttenuationParams", members: [...] }
+];
+
+const sceneUniformItems: UniformItem[] = [
+    { // Struct defined inline
+        name: "light1",
+        type: "PointLightCustom", // Name for this struct type (used for caching its layout)
+        members: [ // Define members; their base types can now be inferred from 'value' for light1
+            { name: "position" }, // Type will be inferred from light1.value.position
+            { name: "color" },    // Type will be inferred from light1.value.color
+            { name: "intensity" },// Type will be inferred from light1.value.intensity
+            { name: "radius" },   // Type will be inferred from light1.value.radius
+        ],
+        value: { // Provide values for all members
+            position: new Float32Array([10, 20, 30]),
+            color: new Float32Array([1.0, 0.8, 0.5]),
+            intensity: 1.5,
+            radius: 100.0,
+        }
+    },
+    { // Base type, type is inferred
+        name: "ambientColor",
+        value: new Float32Array([0.1, 0.1, 0.15, 1.0]) // Inferred as vec4
+    },
+    { // Base type, type is inferred
+        name: "time",
+        value: 0.0 // Inferred as f32
+    },
+    { // Using a pre-defined (now cached) struct type
+        name: "light2",
+        type: "PointLightCustom", // Refers to the layout cached from "light1"
+        // No 'members' needed here as "PointLightCustom" layout is already known/cached.
+        value: { // Values must match the structure of PointLightCustom
+            position: new Float32Array([-5, 5, 5]),
+            color: new Float32Array([0.5, 0.8, 1.0]),
+            intensity: 0.8,
+            radius: 50.0,
+        }
+    }
+];
+
+// To pack these:
+// const packedBuffer = packUniforms(sceneUniformItems);
+// console.log("Packed Buffer Byte Length:", packedBuffer.byteLength); // Should be 80 (for light1, ambient, time) + 48 (for light2) = 128
+
+// To verify (requires a way to read back from ArrayBuffer according to layout):
+// const floatView = new Float32Array(packedBuffer);
+// console.log("Light1 Position X:", floatView[0]); // 10
+// console.log("Light1 Color R:", floatView[16/4 + 0]); // 1.0
+// console.log("Light1 Intensity:", floatView[28/4]); // 1.5
+// console.log("Light1 Radius:", floatView[32/4]); // 100.0
+// console.log("Ambient R:", floatView[48/4]); // 0.1
+// console.log("Time:", floatView[64/4]); // 0.0
+// console.log("Light2 Position X:", floatView[80/4 + 0]); // -5
+*/

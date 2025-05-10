@@ -1,9 +1,9 @@
 import { Texture } from "./texture";
-import { packUniforms, UniformObj, uploadUniformBuffer } from "./uniform-utils";
+import { packUniforms, UniformItem, uploadUniformBuffer } from "./uniform-utils";
 
 export class UniformManager {
     private _device: GPUDevice;
-    private _uniforms?: UniformObj[];
+    private _uniforms?: UniformItem[];
     private _textures?: Texture[];
     private _uniformDirty = true;
     private _texturesDirty = true;
@@ -18,16 +18,19 @@ export class UniformManager {
 
     private _label: string;
 
-    constructor(device: GPUDevice, uniforms?: UniformObj[], textures?: Texture[], label?: string) {
+    constructor(device: GPUDevice, uniforms?: UniformItem[], textures?: Texture[], label?: string) {
         this._device = device;
         this._uniforms = uniforms;
         this._textures = textures;
         this._label = label;
     }
 
-    updateUniform(uniform: UniformObj) {
+    updateUniform(uniform: UniformItem) {
         const toUpdate = this._uniforms?.find((u) => u.name === uniform.name);
         toUpdate.value = uniform.value;
+        if ("time" === uniform.name) {
+            console.log(uniform, toUpdate);
+        }
         this.setUniformsDirty();
     }
 
