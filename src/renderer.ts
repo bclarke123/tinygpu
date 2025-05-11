@@ -210,7 +210,7 @@ export class Renderer {
 
   render(scene: Scene, camera: Camera) {
 
-    console.log("render()");
+    // console.log("render()");
 
     const [width, height] = this.canvasSize;
 
