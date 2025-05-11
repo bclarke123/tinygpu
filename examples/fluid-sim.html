@@ -37,20 +37,22 @@
                 const sim = new tinygpu.fluid.FluidSimulation(renderer);
                 sim.tick();
 
-                const geo = renderer.createGeometry(
-                    tinygpu.geometry.BigTriangle,
-                );
-                const mat = renderer.createMaterial(
-                    tinygpu.material.BasicMaterial,
-                    {
-                        map: target,
-                    },
-                );
-                const mesh = renderer.createMesh(geo, mat);
+                const geo = renderer.createGeometry(tinygpu.geometry.BigTriangle);
 
+                const mat = renderer.createMaterial(tinygpu.material.BasicMaterial, {
+                    color: new tinygpu.Color(0, 0, 0)
+                });
+
+                const mesh = renderer.createMesh(geo, mat);
                 scene.add(mesh);
 
-                renderer.render(scene, camera);
+                const animate = () => {
+                    renderer.render(scene, camera);
+                    // requestAnimationFrame(animate);
+                };
+                animate();
+
+                // setTimeout(animate, 100);
             });
         </script>
     </body>
