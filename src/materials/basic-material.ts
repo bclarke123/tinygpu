@@ -24,6 +24,7 @@ export class BasicMaterial extends Material {
         },
       ],
       [options.map || DefaultTexture.instance],
+      [],
       "BasicMaterial",
     );
 
