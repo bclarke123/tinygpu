@@ -79,7 +79,7 @@ const computedStructLayoutCache: Record<string, Std140LayoutInfo> = {};
  */
 function getDataTypeFromValue(value: UniformValue, itemName: string): string {
   if (typeof value === "number") {
-    return "f32";
+    return Number.isInteger(value) ? "u32" : "f32";
   } else if (value instanceof Color) {
     return "color";
   } else if (value instanceof Float32Array) {
@@ -314,8 +314,14 @@ export function packUniforms(
       }
     } else {
       switch (
-        itemLayout.typeName // Use typeName for direct switch
+      itemLayout.typeName // Use typeName for direct switch
       ) {
+        case "u32":
+          bufferView.setInt32(
+            currentAbsoluteOffset,
+            itemValue as number,
+            true
+          );
         case "f32":
           bufferView.setFloat32(
             currentAbsoluteOffset,
