@@ -2,9 +2,10 @@ import { mat3, Vec3, vec3 } from "wgpu-matrix";
 import { ComputeBufferObj, ComputeTask } from "../compute/compute-task";
 import { Renderer } from "../renderer";
 
-import stage1Shader from "../shaders/fluid/stage1.wgsl";
-import stage2Shader from "../shaders/fluid/stage2.wgsl";
-import stage3Shader from "../shaders/fluid/stage3.wgsl";
+import shaderStructs from "./shaders/structs.wgsl";
+import stage1Shader from "./shaders/stage1.wgsl";
+import stage2Shader from "./shaders/stage2.wgsl";
+import stage3Shader from "./shaders/stage3.wgsl";
 import { packUniforms, UniformValue, uploadUniformBuffer } from "../uniform-utils";
 
 // interface Particle {
@@ -122,12 +123,18 @@ export class FluidSimulation {
     this.particleBufferA = this.initializeParticleBuffer();
     this.particleBufferB = this.initializeParticleBuffer();
 
-    const stage1ShaderModule = renderer.createShaderModule({ code: stage1Shader });
-    const stage2ShaderModule = renderer.createShaderModule({ code: stage2Shader });
-    const stage3ShaderModule = renderer.createShaderModule({ code: stage3Shader });
+    const stage1ShaderModule = renderer.createShaderModule({ code: shaderStructs + stage1Shader, label: "Stage 1" });
+    const stage2ShaderModule = renderer.createShaderModule({ code: shaderStructs + stage2Shader, label: "Stage 2" });
+    const stage3ShaderModule = renderer.createShaderModule({ code: shaderStructs + stage3Shader, label: "Stage 3" });
+
+    const particleWorkgroupSizeX = 64; // @workgroup_size(64,1,1)
+    const s13Size = Math.ceil(this.options.particles / particleWorkgroupSizeX);
+    const s2Size = Math.ceil(this.options.gridSize / 16); // @workgroup_size(4, 4, 4)
 
     this.stage1 = [
       this.initializeComputePass(
+        "Stage 1 A",
+        vec3.create(s13Size, 1, 1),
         stage1ShaderModule,
         [
           { buffer: this.uniformBuffer, type: "uniform" },
@@ -138,6 +145,8 @@ export class FluidSimulation {
         ]
       ),
       this.initializeComputePass(
+        "Stage 1 B",
+        vec3.create(s13Size, 1, 1),
         stage1ShaderModule,
         [
           { buffer: this.uniformBuffer, type: "uniform" },
@@ -150,17 +159,21 @@ export class FluidSimulation {
     ];
 
     this.stage2 = this.initializeComputePass(
+      "Stage 2",
+      vec3.create(s2Size, s2Size, s2Size),
       stage2ShaderModule,
       [
         { buffer: this.uniformBuffer, type: "uniform" },
-        { buffer: this.gridMassBuffer, type: "read-only-storage" },
-        { buffer: this.gridMomentumBuffer, type: "read-only-storage" },
+        { buffer: this.gridMassBuffer, type: "storage" },
+        { buffer: this.gridMomentumBuffer, type: "storage" },
         { buffer: this.gridVelocityBuffer, type: "storage" },
       ]
     );
 
     this.stage3 = [
       this.initializeComputePass(
+        "Stage 3 A",
+        vec3.create(s13Size, 1, 1),
         stage3ShaderModule,
         [
           { buffer: this.uniformBuffer, type: "uniform" },
@@ -170,6 +183,8 @@ export class FluidSimulation {
         ]
       ),
       this.initializeComputePass(
+        "Stage 3 B",
+        vec3.create(s13Size, 1, 1),
         stage3ShaderModule,
         [
           { buffer: this.uniformBuffer, type: "uniform" },
@@ -181,11 +196,12 @@ export class FluidSimulation {
     ];
   }
 
-  initializeComputePass(shader: GPUShaderModule, buffers: ComputeBufferObj[]): FluidSimComputeStage {
+  initializeComputePass(label: string, dispatchCount: Vec3, shader: GPUShaderModule, buffers: ComputeBufferObj[]): FluidSimComputeStage {
     const task = new ComputeTask({
+      label,
       shader,
       entryPoint: "main",
-      dispatchCount: vec3.create(8, 8, 1),
+      dispatchCount,
       buffers,
     });
 
@@ -217,7 +233,7 @@ export class FluidSimulation {
 
     const members = Object.keys(value).map((k) => ({ name: k }));
 
-    console.log(value);
+    // console.log(value);
 
     const packed = packUniforms([
       {
@@ -245,7 +261,7 @@ export class FluidSimulation {
       const z = (i % sideLen) - sideLen * 0.5;
 
       pos.set([x, y, z]);
-      vec3.mulScalar(posBuf, scale);
+      vec3.mulScalar(pos, scale, pos);
 
       packedArr.set(posBuf, 0);
       buf.set(packedArr, i * particleSize);
@@ -263,10 +279,11 @@ export class FluidSimulation {
 
   tick() {
     const commandEncoder = this.renderer.device.createCommandEncoder();
-    const passEncoder = commandEncoder.beginComputePass();
 
     commandEncoder.clearBuffer(this.gridMassBuffer, 0);
     commandEncoder.clearBuffer(this.gridMomentumBuffer, 0);
+
+    const passEncoder = commandEncoder.beginComputePass();
 
     const stage1 = this.stage1[this.pingpong];
     const stage2 = this.stage2;
