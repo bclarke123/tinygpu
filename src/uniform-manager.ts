@@ -1,10 +1,26 @@
 import { Texture } from "./texture";
 import { packUniforms, UniformItem, uploadUniformBuffer } from "./uniform-utils";
 
+export interface UniformBufferAttribute {
+    offset: number;
+    format: string;
+}
+
+export interface UniformBufferItem {
+    type: GPUBufferBindingType;
+    buffer: GPUBuffer;
+    attributes?: UniformBufferAttribute[];
+    visibility?: number;
+    stepMode?: GPUVertexStepMode;
+    stride?: number;
+}
+
 export class UniformManager {
     private _device: GPUDevice;
     private _uniforms?: UniformItem[];
     private _textures?: Texture[];
+    private _buffers?: UniformBufferItem[];
+
     private _uniformDirty = true;
     private _texturesDirty = true;
 
@@ -18,10 +34,12 @@ export class UniformManager {
 
     private _label: string;
 
-    constructor(device: GPUDevice, uniforms?: UniformItem[], textures?: Texture[], label?: string) {
+    constructor(device: GPUDevice, uniforms?: UniformItem[], textures?: Texture[], buffers?: UniformBufferItem[], label?: string) {
         this._device = device;
         this._uniforms = uniforms;
         this._textures = textures;
+        this._buffers = buffers;
+
         this._label = label;
         this._uniformDirty = true;
         this._texturesDirty = true;
@@ -79,7 +97,7 @@ export class UniformManager {
         const entries = [];
 
         let binding = 0;
-        const { _uniforms, _textures } = this;
+        const { _uniforms, _textures, _buffers } = this;
 
         if (_uniforms?.length > 0) {
             entries.push({
@@ -116,6 +134,18 @@ export class UniformManager {
             }
         }
 
+        if (_buffers?.length > 0) {
+            for (let i = 0; i < _buffers?.length; i++) {
+                entries.push({
+                    binding,
+                    visibility: _buffers[i].visibility,
+                    buffer: { type: _buffers[i].type },
+                });
+
+                binding++;
+            }
+        }
+
         const ret = {
             label: `${this._label} BindGroup Layout`,
             entries,
@@ -136,7 +166,7 @@ export class UniformManager {
 
     get bindGroupDescriptor(): GPUBindGroupDescriptor {
         let binding = 0;
-        const { _uniforms, _textures } = this;
+        const { _uniforms, _textures, _buffers } = this;
 
         const entries = [];
 
@@ -165,6 +195,17 @@ export class UniformManager {
             }
         }
 
+        if (_buffers?.length > 0) {
+            for (let i = 0; i < _buffers?.length; i++) {
+                entries.push({
+                    binding,
+                    resource: { buffer: _buffers[i].buffer },
+                });
+
+                binding++;
+            }
+        }
+
         return {
             label: `${this._label} BindGroup`,
             layout: this.bindGroupLayout,
@@ -180,5 +221,9 @@ export class UniformManager {
         this._bindGroup = this._device.createBindGroup(this.bindGroupDescriptor);
 
         return this._bindGroup;
+    }
+
+    get buffers(): UniformBufferItem[] {
+        return this._buffers;
     }
 }
