@@ -106,7 +106,6 @@ export class CubeGeometry extends Geometry {
       renderer,
       vertexGPUBuffer,
       indexGPUBuffer,
-      vertexGPUBuffer,
       indexCount,
       vertexCount,
     );

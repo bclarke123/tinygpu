@@ -12,14 +12,12 @@ export abstract class Geometry {
     renderer: Renderer,
     vertexBuffer: GPUBuffer,
     indexBuffer: GPUBuffer,
-    uvBuffer: GPUBuffer,
     indexCount: number,
     vertexCount: number,
   ) {
     this._renderer = renderer;
     this._vertexBuffer = vertexBuffer;
     this._indexBuffer = indexBuffer;
-    this._uvBuffer = uvBuffer;
     this._indexCount = indexCount;
     this._vertexCount = vertexCount;
   }
