@@ -13,7 +13,8 @@ import { Material } from "./materials/material";
 import { Mesh } from "./mesh";
 import { Scene } from "./scene";
 import { ComputeTask } from "./compute/compute-task";
-import { ImageTexture, MappedTexture, Texture } from "./texture";
+import { ImageTexture, MappedTexture } from "./texture";
+import { UniformBufferItem } from "./uniform-manager";
 
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
@@ -164,7 +165,7 @@ export class Renderer {
     }
 
     const shaderCode = mesh.material.shaderCode;
-    const bufferLayout = mesh.geometry.bufferLayout;
+    const bufferLayout = mesh.bufferLayout;
 
     const layout = this.device!.createPipelineLayout({
       label: "Pipeline Layout",
@@ -209,9 +210,6 @@ export class Renderer {
   }
 
   render(scene: Scene, camera: Camera) {
-
-    // console.log("render()");
-
     const [width, height] = this.canvasSize;
 
     const outputTexture = this.context.getCurrentTexture();
@@ -263,12 +261,19 @@ export class Renderer {
         const pipeline = this.pipelineFor(scene, mesh);
 
         passEncoder.setPipeline(pipeline);
-        passEncoder.setVertexBuffer(0, mesh.geometry.vertexBuffer);
-        passEncoder.setVertexBuffer(1, mesh.geometry.uvBuffer);
-        passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
         passEncoder.setBindGroup(1, mesh.bindGroup);
         passEncoder.setBindGroup(2, mesh.material.bindGroup);
-        passEncoder.drawIndexed(mesh.geometry.indexCount);
+
+        passEncoder.setVertexBuffer(0, mesh.geometry.vertexBuffer);
+
+        if (mesh.buffers && mesh.buffers.length) {
+          for (let i = 0; i < mesh.buffers.length; i++) {
+            passEncoder.setVertexBuffer(i + 1, mesh.buffers[i].buffer);
+          }
+        }
+
+        passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
+        passEncoder.drawIndexed(mesh.geometry.indexCount, mesh.instanceCount);
       }
     });
 
@@ -329,8 +334,8 @@ export class Renderer {
     return new c(this);
   }
 
-  createMesh(geo: Geometry, mat: Material): Mesh {
-    return new Mesh(this.device, mat, geo);
+  createMesh(geo: Geometry, mat: Material, instances?: number, buffers?: UniformBufferItem[]): Mesh {
+    return new Mesh(this.device, mat, geo, instances, buffers);
   }
 
   createScene(): Scene {
