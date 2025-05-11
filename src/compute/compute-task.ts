@@ -1,10 +1,6 @@
 import { vec3, Vec3 } from "wgpu-matrix";
 import { Texture } from "../texture";
-
-export interface ComputeBufferObj {
-  type: GPUBufferBindingType;
-  buffer: GPUBuffer;
-}
+import { UniformBufferItem } from "../uniform-manager";
 
 export interface ComputeTextureObj {
   texture: Texture;
@@ -23,7 +19,7 @@ export interface ComputeTaskOptions {
   shader: GPUShaderModule;
   entryPoint: string;
   dispatchCount: Vec3;
-  buffers?: ComputeBufferObj[];
+  buffers?: UniformBufferItem[];
   textures?: ComputeTextureObj[];
   samplers?: ComputeSamplerObj[];
 }
@@ -157,7 +153,6 @@ export class ComputeTask {
   get bindGroupEntries(): GPUBindGroupEntry[] {
     let binding = 0;
     const { textures, buffers, samplers } = this._options;
-
     const entries = [];
 
     if (samplers?.length > 0) {
@@ -213,9 +208,11 @@ export class ComputeTask {
       return this._bindGroup;
     }
 
+    const layout = this.getBindGroupLayout(device);
+
     this._bindGroup = device.createBindGroup({
-      label: this.label,
-      layout: this._bindGroupLayout,
+      label: `${this.label} BindGroup`,
+      layout,
       entries: this.bindGroupEntries,
     });
 
