@@ -32,21 +32,22 @@
                 await renderer.init();
 
                 const scene = renderer.createScene();
-                const camera = renderer.createOrthographicCamera();
+                const camera = renderer.createPerspectiveCamera();
 
-                const sim = new tinygpu.fluid.FluidSimulation(renderer);
-                sim.tick();
+                const simOptions = new tinygpu.fluid.FluidSimulationOptions(27 /* particles */, 32 /* grid size */);
+                const sim = new tinygpu.fluid.FluidSimulation(renderer, simOptions);
 
-                const geo = renderer.createGeometry(tinygpu.geometry.BigTriangle);
+                const geo = renderer.createGeometry(tinygpu.geometry.CubeGeometry);
 
                 const mat = renderer.createMaterial(tinygpu.material.BasicMaterial, {
-                    color: new tinygpu.Color(0, 0, 0)
+                    color: new tinygpu.Color(0, 1, 0)
                 });
 
-                const mesh = renderer.createMesh(geo, mat);
+                const mesh = renderer.createMesh(geo, mat, 27);
                 scene.add(mesh);
 
                 const animate = () => {
+                    sim.tick();
                     renderer.render(scene, camera);
                     // requestAnimationFrame(animate);
                 };

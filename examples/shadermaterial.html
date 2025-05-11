@@ -42,12 +42,12 @@ struct VSOut {
 }
 
 @vertex
-fn vs_main(@location(0) in_pos: vec3<f32>, @location(1) uv: vec2<f32>) -> VSOut {
+fn vs_main(in: VSIn) -> VSOut {
     let modelViewProj: mat4x4<f32> = scene_uniforms.projection * scene_uniforms.view * model_uniforms.model;
 
     let vs_out: VSOut = VSOut(
-        modelViewProj * vec4<f32>(in_pos, 1.0),
-        uv,
+        modelViewProj * vec4<f32>(in.position, 1.0),
+        in.uv,
     );
     return vs_out;
 }
