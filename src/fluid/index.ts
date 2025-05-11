@@ -1,5 +1,5 @@
 import { mat3, Vec3, vec3 } from "wgpu-matrix";
-import { ComputeBufferObj, ComputeTask } from "../compute/compute-task";
+import { ComputeTask } from "../compute/compute-task";
 import { Renderer } from "../renderer";
 
 import shaderStructs from "./shaders/structs.wgsl";
@@ -7,6 +7,7 @@ import stage1Shader from "./shaders/stage1.wgsl";
 import stage2Shader from "./shaders/stage2.wgsl";
 import stage3Shader from "./shaders/stage3.wgsl";
 import { packUniforms, UniformValue, uploadUniformBuffer } from "../uniform-utils";
+import { UniformBufferItem } from "../uniform-manager";
 
 // interface Particle {
 //   position: Vec3;
@@ -196,7 +197,7 @@ export class FluidSimulation {
     ];
   }
 
-  initializeComputePass(label: string, dispatchCount: Vec3, shader: GPUShaderModule, buffers: ComputeBufferObj[]): FluidSimComputeStage {
+  initializeComputePass(label: string, dispatchCount: Vec3, shader: GPUShaderModule, buffers: UniformBufferItem[]): FluidSimComputeStage {
     const task = new ComputeTask({
       label,
       shader,
@@ -205,7 +206,6 @@ export class FluidSimulation {
       buffers,
     });
 
-    task.getBindGroupLayout(this.renderer.device);
     const bindGroup = task.getBindGroup(this.renderer.device);
     const pipeline = this.renderer.computePipelineFor(task);
 
