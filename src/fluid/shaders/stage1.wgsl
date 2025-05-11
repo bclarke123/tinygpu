@@ -1,9 +1,3 @@
-fn grid_idx_flat(cell_coords_abs: vec3<i32>, n_grid: u32) -> u32 {
-    return u32(cell_coords_abs.x) * n_grid * n_grid +
-           u32(cell_coords_abs.y) * n_grid +
-           u32(cell_coords_abs.z);
-}
-
 //--------------------------------------------------------------------------------------
 // Bindings
 //--------------------------------------------------------------------------------------
@@ -86,17 +80,4 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             }
         }
     }
-}
-
-// Helper for APIC B-Spline based on u = (particle_pos - grid_node_center_pos) / cell_size
-// u is distance from particle to grid node center, in units of cell sizes
-fn quadratic_bspline_N(u : f32) -> f32 {
-    let abs_u = abs(u);
-    var N_u = 0.0;
-    if (abs_u < 0.5) {
-        N_u = 0.75 - abs_u * abs_u;
-    } else if (abs_u < 1.5) {
-        N_u = 0.5 * (1.5 - abs_u) * (1.5 - abs_u);
-    }
-    return N_u;
 }

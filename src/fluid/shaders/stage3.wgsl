@@ -1,26 +1,3 @@
-fn grid_idx_flat(cell_coords_abs: vec3<i32>, n_grid: u32) -> u32 {
-    // Ensure positive before casting for safety if cell_coords_abs can be negative
-    // However, for reading, we expect them to be valid after boundary checks if any.
-    // For G2P, particle can be near boundary, so stencil nodes can be out of bounds.
-    let x = u32(clamp(cell_coords_abs.x, 0, i32(n_grid - 1u)));
-    let y = u32(clamp(cell_coords_abs.y, 0, i32(n_grid - 1u)));
-    let z = u32(clamp(cell_coords_abs.z, 0, i32(n_grid - 1u)));
-    return x * n_grid * n_grid + y * n_grid + z;
-}
-
-// Helper for APIC B-Spline (same as in stage1.wgsl)
-// u is distance from particle to grid node center, in units of cell sizes
-fn quadratic_bspline_N(u : f32) -> f32 {
-    let abs_u = abs(u);
-    var N_u = 0.0;
-    if (abs_u < 0.5) {
-        N_u = 0.75 - abs_u * abs_u;
-    } else if (abs_u < 1.5) {
-        N_u = 0.5 * (1.5 - abs_u) * (1.5 - abs_u);
-    }
-    return N_u;
-}
-
 //--------------------------------------------------------------------------------------
 // Bindings
 //--------------------------------------------------------------------------------------
@@ -79,7 +56,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                 // For G2P, we read from grid. Boundary handling for reads is often done by clamping
                 // indices in the grid_idx_flat function or ensuring particles don't get too close.
                 // The grid_idx_flat above includes clamping.
-                let flat_target_idx = grid_idx_flat(target_grid_node_abs_idx, params.grid_size);
+                let flat_target_idx = grid_idx_flat_clamp(target_grid_node_abs_idx, params.grid_size);
                 let grid_node_vel = grid_velocity_in[flat_target_idx];
 
                 // Interpolate particle velocity

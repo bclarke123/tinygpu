@@ -1,12 +1,3 @@
-// Helper to convert 1D flat grid index to 3D integer grid coordinates
-fn flat_idx_to_3d_coords(flat_idx: u32, n_grid: u32) -> vec3<i32> {
-    let z = i32(flat_idx / (n_grid * n_grid));
-    let remainder = flat_idx % (n_grid * n_grid);
-    let y = i32(remainder / n_grid);
-    let x = i32(remainder % n_grid);
-    return vec3<i32>(x, y, z);
-}
-
 //--------------------------------------------------------------------------------------
 // Bindings
 //--------------------------------------------------------------------------------------
