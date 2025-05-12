@@ -35,31 +35,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     const scene = renderer.createScene();
     const camera = renderer.createPerspectiveCamera();
 
+    // Geometries should provide a buffer with interleaved
+    // position, UV, and normal
+
+    const vertexUvNormal = [
+        -1,  1, 0, /* */ 0, 1, /* */ 0, 0, 1,
+        -1, -1, 0, /* */ 0, 0, /* */ 0, 0, 1,
+         1,  1, 0, /* */ 1, 1, /* */ 0, 0, 1,
+         1, -1, 0, /* */ 1, 0, /* */ 0, 0, 1,
+    ];
+
+    const index = [0, 1, 2, 1, 3, 2];
+
     class CustomGeometry extends tinygpu.geometry.Geometry {
         constructor(renderer) {
-            const vertices = [
-                -1,  1, 0,
-                -1, -1, 0,
-                 1,  1, 0,
-                 1, -1, 0
-            ];
-
-            const indices = [ 0, 1, 2, 1, 3, 2 ];
-
-            const uvs = [
-                  0, 1,
-                  0, 0,
-                  1, 1,
-                  1, 0
-            ];
 
             super(
                 renderer,
-                renderer.createBuffer(new Float32Array(vertices), GPUBufferUsage.VERTEX),
-                renderer.createBuffer(new Uint16Array(indices), GPUBufferUsage.INDEX),
-                renderer.createBuffer(new Float32Array(uvs), GPUBufferUsage.VERTEX),
-                6, // Index count
-                4  // Vertex count
+                renderer.createBuffer(new Float32Array(vertexUvNormal), GPUBufferUsage.VERTEX),
+                renderer.createBuffer(new Uint16Array(index), GPUBufferUsage.INDEX),
+                index.length,
+                vertexUvNormal.length / 8
             );
         }
 
@@ -71,24 +67,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             return [
                 { // vertices
                     attributes: [
-                        {
+                        { // Vertex
                             shaderLocation: 0,
                             offset: 0,
                             format: "float32x3",
-                        }
-                    ],
-                    arrayStride: 3 * 4,
-                    stepMode: "vertex",
-                },
-                { // uvs
-                    attributes: [
-                        {
+                        },
+                        { // UV
                             shaderLocation: 1,
-                            offset: 0,
+                            offset: 3 * 4,
                             format: "float32x2",
+                        },
+                        { // Normal
+                            shaderLocation: 2,
+                            offset: 5 * 4,
+                            format: "float32x3",
                         }
                     ],
-                    arrayStride: 2 * 4,
+                    arrayStride: 8 * 4,
                     stepMode: "vertex",
                 }
             ]
