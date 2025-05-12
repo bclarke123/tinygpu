@@ -266,12 +266,6 @@ export class Renderer {
 
         passEncoder.setVertexBuffer(0, mesh.geometry.vertexBuffer);
 
-        if (mesh.buffers && mesh.buffers.length) {
-          for (let i = 0; i < mesh.buffers.length; i++) {
-            passEncoder.setVertexBuffer(i + 1, mesh.buffers[i].buffer);
-          }
-        }
-
         passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
         passEncoder.drawIndexed(mesh.geometry.indexCount, mesh.instanceCount);
       }
@@ -334,7 +328,12 @@ export class Renderer {
     return new c(this);
   }
 
-  createMesh(geo: Geometry, mat: Material, instances?: number, buffers?: UniformBufferItem[]): Mesh {
+  createMesh(
+    geo: Geometry,
+    mat: Material,
+    instances?: number,
+    buffers?: UniformBufferItem[],
+  ): Mesh {
     return new Mesh(this.device, mat, geo, instances, buffers);
   }
 
