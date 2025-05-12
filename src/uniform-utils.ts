@@ -317,11 +317,12 @@ export function packUniforms(
       itemLayout.typeName // Use typeName for direct switch
       ) {
         case "u32":
-          bufferView.setInt32(
+          bufferView.setUint32(
             currentAbsoluteOffset,
             itemValue as number,
             true
           );
+          break;
         case "f32":
           bufferView.setFloat32(
             currentAbsoluteOffset,
