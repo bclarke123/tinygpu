@@ -6,7 +6,11 @@ import shaderStructs from "./shaders/structs.wgsl";
 import stage1Shader from "./shaders/stage1.wgsl";
 import stage2Shader from "./shaders/stage2.wgsl";
 import stage3Shader from "./shaders/stage3.wgsl";
-import { packUniforms, UniformValue, uploadUniformBuffer } from "../uniform-utils";
+import {
+  packUniforms,
+  UniformValue,
+  uploadUniformBuffer,
+} from "../uniform-utils";
 import { UniformBufferItem } from "../uniform-manager";
 
 // interface Particle {
@@ -21,10 +25,10 @@ import { UniformBufferItem } from "../uniform-manager";
 // }
 
 interface FluidSimComputeStage {
-  task: ComputeTask,
-  bindGroup: GPUBindGroup,
-  pipeline: GPUComputePipeline
-};
+  task: ComputeTask;
+  bindGroup: GPUBindGroup;
+  pipeline: GPUComputePipeline;
+}
 
 export class FluidSimulationOptions {
   dt: number;
@@ -52,8 +56,11 @@ export class FluidSimulationOptions {
     this.dt = 1e-4;
     this.dx = 1.0 / this.gridSize;
     this.invDx = this.gridSize;
-    this.particleInitialVolume = Math.pow((1.0 / this.gridSize) * 0.5, this.dimensions);
-    this.particleMass = Math.pow((1.0 / this.gridSize) * 0.5, this.dimensions);
+    this.particleInitialVolume = Math.pow(
+      (1.0 / this.gridSize) * 0.5,
+      this.dimensions,
+    );
+    this.particleMass = 1.0; // Math.pow((1.0 / this.gridSize) * 0.5, this.dimensions);
     this.gravity = 9.8;
     this.mu0 = 5e3 / (2.0 * (1.0 + 0.2));
     this.lambda0 = (5e3 * 0.2) / ((1.0 + 0.2) * (1.0 - 2.0 * 0.2));
@@ -68,7 +75,7 @@ export class FluidSimulationOptions {
     const ret = Object.keys(this).map((k) => ({
       name: k,
       value: this[k],
-      type: "f32"
+      type: "f32",
     }));
 
     return ret;
@@ -94,9 +101,15 @@ export class FluidSimulation {
   uniformArr: ArrayBuffer;
   uniformBuffer: GPUBuffer;
 
+  particleStagingBuffer: GPUBuffer;
+  particleDataForReadback: ArrayBuffer;
+
   constructor(
     renderer: Renderer,
-    options: FluidSimulationOptions = new FluidSimulationOptions(40 * 40 * 40, 128),
+    options: FluidSimulationOptions = new FluidSimulationOptions(
+      40 * 40 * 40,
+      128,
+    ),
   ) {
     this.renderer = renderer;
     this.options = options;
@@ -118,15 +131,30 @@ export class FluidSimulation {
       GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     );
 
-    this.uniformArr = packUniforms(this.options.asUniformItems(), this.uniformArr);
-    this.uniformBuffer = uploadUniformBuffer(this.uniformArr, this.renderer.device);
+    this.uniformArr = packUniforms(
+      this.options.asUniformItems(),
+      this.uniformArr,
+    );
+    this.uniformBuffer = uploadUniformBuffer(
+      this.uniformArr,
+      this.renderer.device,
+    );
 
     this.particleBufferA = this.initializeParticleBuffer();
     this.particleBufferB = this.initializeParticleBuffer();
 
-    const stage1ShaderModule = renderer.createShaderModule({ code: shaderStructs + stage1Shader, label: "Stage 1" });
-    const stage2ShaderModule = renderer.createShaderModule({ code: shaderStructs + stage2Shader, label: "Stage 2" });
-    const stage3ShaderModule = renderer.createShaderModule({ code: shaderStructs + stage3Shader, label: "Stage 3" });
+    const stage1ShaderModule = renderer.createShaderModule({
+      code: shaderStructs + stage1Shader,
+      label: "Stage 1",
+    });
+    const stage2ShaderModule = renderer.createShaderModule({
+      code: shaderStructs + stage2Shader,
+      label: "Stage 2",
+    });
+    const stage3ShaderModule = renderer.createShaderModule({
+      code: shaderStructs + stage3Shader,
+      label: "Stage 3",
+    });
 
     const particleWorkgroupSizeX = 64; // @workgroup_size(64,1,1)
     const s13Size = Math.ceil(this.options.particles / particleWorkgroupSizeX);
@@ -143,7 +171,7 @@ export class FluidSimulation {
           { buffer: this.gridMomentumBuffer, type: "storage" },
           { buffer: this.particleBufferA, type: "read-only-storage" },
           { buffer: this.particleBufferB, type: "storage" },
-        ]
+        ],
       ),
       this.initializeComputePass(
         "Stage 1 B",
@@ -155,7 +183,7 @@ export class FluidSimulation {
           { buffer: this.gridMomentumBuffer, type: "storage" },
           { buffer: this.particleBufferB, type: "read-only-storage" },
           { buffer: this.particleBufferA, type: "storage" },
-        ]
+        ],
       ),
     ];
 
@@ -168,7 +196,7 @@ export class FluidSimulation {
         { buffer: this.gridMassBuffer, type: "storage" },
         { buffer: this.gridMomentumBuffer, type: "storage" },
         { buffer: this.gridVelocityBuffer, type: "storage" },
-      ]
+      ],
     );
 
     this.stage3 = [
@@ -181,7 +209,7 @@ export class FluidSimulation {
           { buffer: this.gridVelocityBuffer, type: "read-only-storage" },
           { buffer: this.particleBufferA, type: "read-only-storage" },
           { buffer: this.particleBufferB, type: "storage" },
-        ]
+        ],
       ),
       this.initializeComputePass(
         "Stage 3 B",
@@ -192,12 +220,28 @@ export class FluidSimulation {
           { buffer: this.gridVelocityBuffer, type: "read-only-storage" },
           { buffer: this.particleBufferB, type: "read-only-storage" },
           { buffer: this.particleBufferA, type: "storage" },
-        ]
+        ],
       ),
     ];
+
+    // In the constructor:
+    const particleStructSizeBytes = 144;
+    const totalParticleDataBytes =
+      this.options.particles * particleStructSizeBytes;
+    this.particleStagingBuffer = this.renderer.device.createBuffer({
+      size: totalParticleDataBytes,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, // For copying to, and mapping for CPU read
+      label: "ParticleStagingBuffer",
+    });
+    this.particleDataForReadback = new ArrayBuffer(totalParticleDataBytes);
   }
 
-  initializeComputePass(label: string, dispatchCount: Vec3, shader: GPUShaderModule, buffers: UniformBufferItem[]): FluidSimComputeStage {
+  initializeComputePass(
+    label: string,
+    dispatchCount: Vec3,
+    shader: GPUShaderModule,
+    buffers: UniformBufferItem[],
+  ): FluidSimComputeStage {
     const task = new ComputeTask({
       label,
       shader,
@@ -212,12 +256,11 @@ export class FluidSimulation {
     return {
       task,
       bindGroup,
-      pipeline
+      pipeline,
     };
   }
 
   initializeParticleBuffer() {
-
     const now = performance.now();
 
     const value: { [k: string]: UniformValue } = {
@@ -225,9 +268,9 @@ export class FluidSimulation {
       velocity: vec3.create(),
       affineMatrixC: mat3.create(),
       deformationGradientF: mat3.identity<Float32Array>(),
+      mass: this.options.particleMass,
       Jf: 1.0,
       Jp: 1.0,
-      mass: this.options.particleMass,
       materialIndex: 0,
     };
 
@@ -249,7 +292,7 @@ export class FluidSimulation {
     const particleBufferSize = particleSize * this.options.particles;
     const buf = new Uint8Array(particleBufferSize);
 
-    const scale = 0.1;
+    const scale = 2.0;
     const pos = vec3.create();
     const posBuf = new Uint8Array(pos.buffer);
 
@@ -269,10 +312,12 @@ export class FluidSimulation {
 
     const ret = this.renderer.createBuffer(
       buf,
-      GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+      GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC |
+        GPUBufferUsage.STORAGE,
     );
 
-    console.log(`Created position buffer in ${(performance.now() - now)}ms`);
+    console.log(`Created position buffer in ${performance.now() - now}ms`);
 
     return ret;
   }
@@ -306,8 +351,127 @@ export class FluidSimulation {
 
     passEncoder.end();
 
+    // Inside tick(), after passEncoder.end()
+    // Choose which particle buffer has the latest data. After pingpong, it's this.stage1[1-this.pingpong].task.buffers[4].buffer
+    // or more simply, if pingpong flips at the end of tick, the "written-to" buffer in the *next* frame's P2G input
+    // would be the one that was just fully updated.
+    // Let's assume currentParticleReadBuffer (from your ping-pong logic) holds the data you want to inspect.
+    // If pingpong is 0 before the flip, stage1[0] used A as input, B as output. stage3[0] used B as input, A as output.
+    // So, if this.pingpong is 0 (meaning next frame it will be 1), then particleBufferA was the final output.
+    // If this.pingpong is 1 (meaning next frame it will be 0), then particleBufferB was the final output.
+    const finalOutputParticleBuffer =
+      this.pingpong === 0 ? this.particleBufferA : this.particleBufferB;
+
+    const particleStructSizeBytes = 144;
+    const totalParticleDataBytes =
+      this.options.particles * particleStructSizeBytes;
+
+    commandEncoder.copyBufferToBuffer(
+      finalOutputParticleBuffer, // Source: The GPU buffer with latest particle data
+      0, // Source offset
+      this.particleStagingBuffer, // Destination: The mappable staging buffer
+      0, // Destination offset
+      totalParticleDataBytes, // Size
+    );
+
     this.renderer.device.queue.submit([commandEncoder.finish()]);
 
     this.pingpong = 1 - this.pingpong;
+  }
+
+  // Add a method to your FluidSimulation class
+  async inspectParticles(numParticlesToLog: number = 5) {
+    // This should be called AFTER the queue.submit() containing the copyBufferToBuffer has processed.
+    // A robust way is to use device.queue.onSubmittedWorkDone() if you're not doing it per frame.
+    // For simplicity, if called right after a tick(), we hope the copy is done.
+    // A better pattern is to do the mapAsync in the next frame's requestAnimationFrame callback,
+    // or after onSubmittedWorkDone().
+
+    try {
+      await this.particleStagingBuffer.mapAsync(
+        GPUMapMode.READ,
+        0, // Offset
+        this.particleStagingBuffer.size, // Size
+      );
+
+      const mappedRange = this.particleStagingBuffer.getMappedRange();
+      // Create a copy of the data so we can unmap the buffer quickly
+      const particleDataCopy = mappedRange.slice(0);
+      this.particleStagingBuffer.unmap();
+
+      const particles: any[] = []; // Or your defined Particle JS/TS object type
+      const particleSize = 144; // Bytes per particle, from your setup
+
+      const dataView = new DataView(particleDataCopy);
+
+      for (
+        let i = 0;
+        i < Math.min(numParticlesToLog, this.options.particles);
+        i++
+      ) {
+        const offset = i * particleSize;
+        const p: any = {}; // Or new YourParticleClass();
+
+        // Unpack fields based on your Particle struct order and alignment
+        // This is the inverse of your packUniforms logic for a single particle
+        // Assuming 'position' is first (vec3f, 12 bytes, 16-byte aligned block)
+        p.position = vec3.fromValues(
+          dataView.getFloat32(offset + 0, true),
+          dataView.getFloat32(offset + 4, true),
+          dataView.getFloat32(offset + 8, true),
+        );
+        // Assuming 'velocity' is next (vec3f, 12 bytes, 16-byte aligned block)
+        p.velocity = vec3.fromValues(
+          dataView.getFloat32(offset + 16, true),
+          dataView.getFloat32(offset + 20, true),
+          dataView.getFloat32(offset + 24, true),
+        );
+        // affineMatrixC: mat3x3f. Each column is vec3f, aligned to 16 bytes.
+        // Total 3 * 16 = 48 bytes.
+        // Column 0
+        const c0x = dataView.getFloat32(offset + 32, true);
+        const c0y = dataView.getFloat32(offset + 36, true);
+        const c0z = dataView.getFloat32(offset + 40, true);
+        // Column 1
+        const c1x = dataView.getFloat32(offset + 32 + 16, true);
+        const c1y = dataView.getFloat32(offset + 36 + 16, true);
+        const c1z = dataView.getFloat32(offset + 40 + 16, true);
+        // Column 2
+        const c2x = dataView.getFloat32(offset + 32 + 32, true);
+        const c2y = dataView.getFloat32(offset + 36 + 32, true);
+        const c2z = dataView.getFloat32(offset + 40 + 32, true);
+        p.affineMatrixC = mat3.create(
+          c0x,
+          c0y,
+          c0z,
+          c1x,
+          c1y,
+          c1z,
+          c2x,
+          c2y,
+          c2z,
+        );
+
+        // deformationGradientF: mat3x3f (another 48 bytes)
+        // Starts at offset + 32 + 48 = offset + 80
+        const f0x = dataView.getFloat32(offset + 80, true);
+        // ... (unpack all 9 components similarly to C) ...
+        p.deformationGradientF = mat3.identity(); // Placeholder, unpack properly
+
+        // mass: f32 (starts after F, i.e., offset + 80 + 48 = offset + 128)
+        p.mass = dataView.getFloat32(offset + 128, true);
+        // Jp: f32 (offset + 128 + 4 = offset + 132)
+        p.Jp = dataView.getFloat32(offset + 132, true);
+        // Jf: f32 (offset + 132 + 4 = offset + 136)
+        p.Jf = dataView.getFloat32(offset + 136, true);
+        // materialIndex: u32 (offset + 136 + 4 = offset + 140)
+        p.materialIndex = dataView.getUint32(offset + 140, true);
+
+        particles.push(p);
+      }
+      console.log("Readback Particles:", JSON.stringify(particles));
+    } catch (e) {
+      console.error("Failed to map staging buffer or read particles:", e);
+    }
   }
 }
