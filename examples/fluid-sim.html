@@ -140,17 +140,19 @@ fn fs_main(vs: VSOut) -> @location(0) vec4f {
 
                 const animate = () => {
                     sim.tick();
+                    // sim.tick();
 
                     mat.updateUniform({
                         name: "pingpong",
                         value: sim.pingpong,
                     });
                     renderer.render(scene, camera);
-                    // requestAnimationFrame(animate);
+                    requestAnimationFrame(animate);
                 };
                 animate();
 
-                await sim.inspectParticles();
+                // await sim.inspectParticles();
+                // await sim.inspectGridVelocities();
             });
         </script>
     </body>
