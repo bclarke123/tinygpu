@@ -1,6 +1,7 @@
 import { Vec3 } from "wgpu-matrix";
 import { ComputeTask } from "../compute/compute-task";
 import { Renderer } from "../renderer";
+import { UniformItem } from "../uniform-utils";
 import { UniformBufferItem } from "../uniform-manager";
 interface FluidSimComputeStage {
     task: ComputeTask;
@@ -25,11 +26,7 @@ export declare class FluidSimulationOptions {
     snowYieldMax: number;
     boundaryExtent: number;
     constructor(particles: number, gridSize: number);
-    asUniformItems(): {
-        name: string;
-        value: any;
-        type: string;
-    }[];
+    asUniformItems(): UniformItem[];
 }
 export declare class FluidSimulation {
     renderer: Renderer;
@@ -47,10 +44,12 @@ export declare class FluidSimulation {
     uniformBuffer: GPUBuffer;
     particleStagingBuffer: GPUBuffer;
     particleDataForReadback: ArrayBuffer;
+    gridVelocityStagingBuffer: GPUBuffer;
     constructor(renderer: Renderer, options?: FluidSimulationOptions);
     initializeComputePass(label: string, dispatchCount: Vec3, shader: GPUShaderModule, buffers: UniformBufferItem[]): FluidSimComputeStage;
     initializeParticleBuffer(): GPUBuffer;
     tick(): void;
     inspectParticles(numParticlesToLog?: number): Promise<void>;
+    inspectGridVelocities(numCellsToLog?: number): Promise<void>;
 }
 export {};
