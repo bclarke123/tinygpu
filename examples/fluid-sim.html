@@ -32,26 +32,125 @@
                 await renderer.init();
 
                 const scene = renderer.createScene();
-                const camera = renderer.createPerspectiveCamera();
-
-                const simOptions = new tinygpu.fluid.FluidSimulationOptions(27 /* particles */, 32 /* grid size */);
-                const sim = new tinygpu.fluid.FluidSimulation(renderer, simOptions);
-
-                const geo = renderer.createGeometry(tinygpu.geometry.CubeGeometry);
-
-                const mat = renderer.createMaterial(tinygpu.material.BasicMaterial, {
-                    color: new tinygpu.Color(0, 1, 0)
+                const camera = renderer.createPerspectiveCamera({
+                    position: [3, 3, 5],
+                    target: [0, 0, 0],
                 });
 
-                const mesh = renderer.createMesh(geo, mat, 27);
+                const nParticles = 27;
+                const gridSize = 32;
+
+                const simOptions = new tinygpu.fluid.FluidSimulationOptions(
+                    nParticles /* particles */,
+                    gridSize /* grid size */,
+                );
+                const sim = new tinygpu.fluid.FluidSimulation(
+                    renderer,
+                    simOptions,
+                );
+
+                const geo = renderer.createGeometry(
+                    tinygpu.geometry.CubeGeometry,
+                );
+
+                const mat = renderer.createMaterial(
+                    tinygpu.material.ShaderMaterial,
+                    {
+                        code: /* wgsl */ `
+struct Uniforms {
+  pingpong: u32
+};
+
+struct Particle {
+    position: vec3<f32>,
+    velocity: vec3<f32>,
+    affine_matrix_C: mat3x3<f32>,
+    deformation_gradient_F: mat3x3<f32>,
+    mass: f32,
+    Jp: f32,
+    Jf: f32,
+    material_idx: u32,
+};
+
+struct VSOut {
+  @builtin(position) position: vec4f,
+  @location(0) uv: vec2f,
+  @location(1) @interpolate(flat) instance: u32
+};
+
+@group(BG_MODEL) @binding(1) var<storage> particlesA: array<Particle>;
+@group(BG_MODEL) @binding(2) var<storage> particlesB: array<Particle>;
+
+@group(BG_UNIFORMS) @binding(0) var<uniform> uniforms: Uniforms;
+
+fn getParticle(index: u32) -> Particle {
+  if uniforms.pingpong == 0 {
+    return particlesB[index];
+  }
+
+  return particlesA[index];
+}
+
+@vertex
+fn vs_main(in: VSIn, @builtin(instance_index) instance: u32) -> VSOut {
+  let particle = getParticle(instance);
+  let projection = scene_uniforms.projection;
+  let view = scene_uniforms.view;
+  let model = model_uniforms.model;
+  let position = projection * view * model * vec4(in.position + particle.position, 1.0);
+
+  return VSOut(
+    position,
+    in.uv,
+    instance
+  );
+}
+
+@fragment
+fn fs_main(vs: VSOut) -> @location(0) vec4f {
+  let particle = getParticle(vs.instance);
+  return vec4((particle.position + 3.0) / 6.0, 1.0);
+}
+                        `,
+                        uniforms: [
+                            {
+                                name: "pingpong",
+                                value: sim.pingpong,
+                            },
+                        ],
+                    },
+                );
+
+                const mesh = renderer.createMesh(geo, mat, nParticles, [
+                    {
+                        buffer: sim.particleBufferA,
+                        type: "read-only-storage",
+                        visibility:
+                            GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    },
+                    {
+                        buffer: sim.particleBufferB,
+                        type: "read-only-storage",
+                        visibility:
+                            GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    },
+                ]);
+
                 scene.add(mesh);
 
                 const animate = () => {
                     sim.tick();
+
+                    mat.updateUniform({
+                        name: "pingpong",
+                        value: sim.pingpong,
+                    });
                     renderer.render(scene, camera);
                     // requestAnimationFrame(animate);
                 };
                 animate();
+
+                await sim.inspectParticles();
             });
         </script>
     </body>
