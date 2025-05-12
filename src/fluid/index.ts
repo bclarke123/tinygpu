@@ -8,6 +8,7 @@ import stage2Shader from "./shaders/stage2.wgsl";
 import stage3Shader from "./shaders/stage3.wgsl";
 import {
   packUniforms,
+  UniformItem,
   UniformValue,
   uploadUniformBuffer,
 } from "../uniform-utils";
@@ -72,13 +73,26 @@ export class FluidSimulationOptions {
   }
 
   asUniformItems() {
-    const ret = Object.keys(this).map((k) => ({
-      name: k,
-      value: this[k],
-      type: "f32",
-    }));
+    const items: UniformItem[] = [
+      { name: "dt", value: this.dt, type: "f32" },
+      { name: "dx", value: this.dx, type: "f32" },
+      { name: "inv_dx", value: this.invDx, type: "f32" }, // Name in WGSL is inv_dx
+      { name: "grid_size", value: this.gridSize, type: "u32" },
+      { name: "dimensions", value: this.dimensions, type: "u32" },
+      { name: "num_particles", value: this.particles, type: "u32" }, // Name in WGSL is num_particles
+      { name: "particle_initial_volume", value: this.particleInitialVolume, type: "f32" },
+      { name: "particle_mass_param", value: this.particleMass, type: "f32" }, // Name in WGSL
+      { name: "gravity", value: this.gravity, type: "f32" },
+      { name: "mu_0", value: this.mu0, type: "f32" }, // Name in WGSL
+      { name: "lambda_0", value: this.lambda0, type: "f32" }, // Name in WGSL
+      { name: "fluid_stiffness_Ef", value: this.fluidStiffnessEf, type: "f32" }, // Name in WGSL
+      { name: "snow_plasticity_h_factor", value: this.snowPlasticityHFactor, type: "f32" }, // Name in WGSL
+      { name: "snow_yield_min", value: this.snowYieldMin, type: "f32" }, // Name in WGSL
+      { name: "snow_yield_max", value: this.snowYieldMax, type: "f32" }, // Name in WGSL
+      { name: "boundary_extent", value: this.boundaryExtent, type: "u32" }, // Name in WGSL
+    ];
 
-    return ret;
+    return items;
   }
 }
 
@@ -104,6 +118,8 @@ export class FluidSimulation {
   particleStagingBuffer: GPUBuffer;
   particleDataForReadback: ArrayBuffer;
 
+  gridVelocityStagingBuffer: GPUBuffer;
+
   constructor(
     renderer: Renderer,
     options: FluidSimulationOptions = new FluidSimulationOptions(
@@ -128,7 +144,7 @@ export class FluidSimulation {
 
     this.gridVelocityBuffer = renderer.createBuffer(
       new Float32Array(gridElements * this.options.dimensions),
-      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
     );
 
     this.uniformArr = packUniforms(
@@ -158,7 +174,7 @@ export class FluidSimulation {
 
     const particleWorkgroupSizeX = 64; // @workgroup_size(64,1,1)
     const s13Size = Math.ceil(this.options.particles / particleWorkgroupSizeX);
-    const s2Size = Math.ceil(this.options.gridSize / 16); // @workgroup_size(4, 4, 4)
+    const s2Size = Math.ceil(this.options.gridSize / 4); // @workgroup_size(4, 4, 4)
 
     this.stage1 = [
       this.initializeComputePass(
@@ -234,6 +250,12 @@ export class FluidSimulation {
       label: "ParticleStagingBuffer",
     });
     this.particleDataForReadback = new ArrayBuffer(totalParticleDataBytes);
+
+    this.gridVelocityStagingBuffer = this.renderer.device.createBuffer({
+      size: gridElements * options.dimensions * 4,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, // For copying to, and mapping for CPU read
+      label: "VelocityStagingBuffer",
+    })
   }
 
   initializeComputePass(
@@ -313,8 +335,8 @@ export class FluidSimulation {
     const ret = this.renderer.createBuffer(
       buf,
       GPUBufferUsage.COPY_DST |
-        GPUBufferUsage.COPY_SRC |
-        GPUBufferUsage.STORAGE,
+      GPUBufferUsage.COPY_SRC |
+      GPUBufferUsage.STORAGE,
     );
 
     console.log(`Created position buffer in ${performance.now() - now}ms`);
@@ -372,6 +394,15 @@ export class FluidSimulation {
       this.particleStagingBuffer, // Destination: The mappable staging buffer
       0, // Destination offset
       totalParticleDataBytes, // Size
+    );
+
+    // Now encode the copy for gridVelocityBuffer
+    commandEncoder.copyBufferToBuffer(
+      this.gridVelocityBuffer,
+      0,
+      this.gridVelocityStagingBuffer, // Your new staging buffer for velocities
+      0,
+      this.gridVelocityBuffer.size
     );
 
     this.renderer.device.queue.submit([commandEncoder.finish()]);
@@ -472,6 +503,36 @@ export class FluidSimulation {
       console.log("Readback Particles:", JSON.stringify(particles));
     } catch (e) {
       console.error("Failed to map staging buffer or read particles:", e);
+    }
+  }
+
+  async inspectGridVelocities(numCellsToLog: number = 100) {
+    try {
+      await this.gridVelocityStagingBuffer.mapAsync(GPUMapMode.READ, 0, this.gridVelocityStagingBuffer.size);
+      const mappedRange = this.gridVelocityStagingBuffer.getMappedRange();
+      const dataCopy = mappedRange.slice(0);
+      this.gridVelocityStagingBuffer.unmap();
+
+      const velocities: { x: number, y: number, z: number }[] = [];
+      const dataView = new DataView(dataCopy);
+      const numGridCells = Math.pow(this.options.gridSize, this.options.dimensions);
+
+      for (let i = 0; i < Math.min(numCellsToLog, numGridCells); i++) {
+        const offset = i * 3 * 4; // 3 floats per cell, 4 bytes per float
+        const vx = dataView.getFloat32(offset + 0, true);
+        const vy = dataView.getFloat32(offset + 4, true);
+        const vz = dataView.getFloat32(offset + 8, true);
+        if (vx !== 0 || vy !== 0 || vz !== 0) { // Only log non-zero velocities
+          velocities.push({ x: vx, y: vy, z: vz });
+        }
+      }
+      if (velocities.length > 0) {
+        console.log("Readback Grid Velocities (non-zero):", JSON.stringify(velocities, null, 2));
+      } else {
+        console.log("Readback Grid Velocities: All logged cells are zero.");
+      }
+    } catch (e) {
+      console.error("Failed to map or read grid velocity staging buffer:", e);
     }
   }
 }

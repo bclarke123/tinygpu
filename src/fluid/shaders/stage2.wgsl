@@ -25,12 +25,20 @@ fn main(@builtin(global_invocation_id) grid_coords_abs_u32: vec3<u32>) {
                    grid_coords_abs_u32.y * params.grid_size +
                    grid_coords_abs_u32.z;
 
+    if (flat_idx == 0u) { // Test for the first grid cell
+        let test_float: f32 = 1.23;
+        let encoded_test: i32 = encodeFixedPoint(test_float); // Uses FIXED_POINT_MULTIPLIER from structs.wgsl
+        let decoded_test: f32 = decodeFixedPoint(encoded_test);
+        grid_velocity_out[flat_idx] = vec3<f32>(f32(encoded_test), decoded_test, test_float);
+        return; // Only process this one cell for this test
+    }
+
     // 1. Decode mass
     // atomicLoad is not strictly necessary if Stage 1 P2G is guaranteed to finish before this.
     // We can treat them as regular i32 after the P2G pass.
     // For clarity of intent (that these were atomically written):
     let mass_fixedpoint = atomicLoad(&grid_mass_in[flat_idx]);
-    let mass_float = decodeFixedPoint(mass_fixedpoint);
+    let mass_float = 1.0; //decodeFixedPoint(mass_fixedpoint);
 
     var final_velocity = vec3<f32>(0.0, 0.0, 0.0);
 
@@ -49,6 +57,8 @@ fn main(@builtin(global_invocation_id) grid_coords_abs_u32: vec3<u32>) {
         // 3. Normalize to get velocity
         final_velocity = momentum_float / mass_float;
 
+        // final_velocity.y = final_velocity.y - 9.8 * 0.0001;
+
         // 4. Apply Gravity
         final_velocity.y = final_velocity.y - params.gravity * params.dt;
 
@@ -58,29 +68,29 @@ fn main(@builtin(global_invocation_id) grid_coords_abs_u32: vec3<u32>) {
         let boundary_max = f32(params.grid_size) - f32(params.boundary_extent) -1.0; // -1 because grid_coords are 0-indexed
 
         // X-axis boundaries
-        if (f32(grid_coords_abs_u32.x) < boundary_min && final_velocity.x < 0.0) {
-            final_velocity.x = 0.0;
-        }
-        if (f32(grid_coords_abs_u32.x) > boundary_max && final_velocity.x > 0.0) {
-            final_velocity.x = 0.0;
-        }
+        // if (f32(grid_coords_abs_u32.x) < boundary_min && final_velocity.x < 0.0) {
+        //     final_velocity.x = 0.0;
+        // }
+        // if (f32(grid_coords_abs_u32.x) > boundary_max && final_velocity.x > 0.0) {
+        //     final_velocity.x = 0.0;
+        // }
 
-        // Y-axis boundaries
-        if (f32(grid_coords_abs_u32.y) < boundary_min && final_velocity.y < 0.0) {
-            final_velocity.y = 0.0;
-        }
-        if (f32(grid_coords_abs_u32.y) > boundary_max && final_velocity.y > 0.0) {
-            // Example: Sticky top boundary or just reflect/zero
-            final_velocity.y = 0.0;
-        }
+        // // Y-axis boundaries
+        // if (f32(grid_coords_abs_u32.y) < boundary_min && final_velocity.y < 0.0) {
+        //     final_velocity.y = 0.0;
+        // }
+        // if (f32(grid_coords_abs_u32.y) > boundary_max && final_velocity.y > 0.0) {
+        //     // Example: Sticky top boundary or just reflect/zero
+        //     final_velocity.y = 0.0;
+        // }
 
-        // Z-axis boundaries
-        if (f32(grid_coords_abs_u32.z) < boundary_min && final_velocity.z < 0.0) {
-            final_velocity.z = 0.0;
-        }
-        if (f32(grid_coords_abs_u32.z) > boundary_max && final_velocity.z > 0.0) {
-            final_velocity.z = 0.0;
-        }
+        // // Z-axis boundaries
+        // if (f32(grid_coords_abs_u32.z) < boundary_min && final_velocity.z < 0.0) {
+        //     final_velocity.z = 0.0;
+        // }
+        // if (f32(grid_coords_abs_u32.z) > boundary_max && final_velocity.z > 0.0) {
+        //     final_velocity.z = 0.0;
+        // }
     }
     // Else (mass is zero), final_velocity remains (0,0,0)
 

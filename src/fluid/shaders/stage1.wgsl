@@ -80,4 +80,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             }
         }
     }
+
+    particles_out[id.x] = p;
 }
