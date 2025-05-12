@@ -1,4 +1,5 @@
 import { UniformManager } from "../uniform-manager";
+import { UniformItem } from "../uniform-utils";
 
 export abstract class Material {
   protected _uniformManager: UniformManager;
@@ -16,6 +17,10 @@ export abstract class Material {
 
   get bindGroup(): GPUBindGroup | undefined {
     return this._uniformManager?.bindGroup;
+  }
+
+  updateUniform(uniform: UniformItem) {
+    this._uniformManager.updateUniform(uniform);
   }
 
   update() {
