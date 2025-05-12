@@ -20,7 +20,7 @@ export declare class PerspectiveCamera extends Camera {
     aspect, // Default: Common aspect ratio
     near, far, position, // Use vec3.create for default
     target, // Use vec3.create for default
-    up }?: {
+    up, }?: {
         fov?: number;
         aspect?: number;
         near?: number;
@@ -31,7 +31,7 @@ export declare class PerspectiveCamera extends Camera {
     });
     updateProjectionMatrix(): void;
     updateViewMatrix(): void;
-    setPosition(newPosition: Vec3): void;
+    setPosition(x: number, y: number, z: number): void;
     setTarget(newTarget: Vec3): void;
     setUp(newUp: Vec3): void;
     setFov(newFov: number): void;

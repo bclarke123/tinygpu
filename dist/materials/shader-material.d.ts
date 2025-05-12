@@ -1,10 +1,12 @@
 import { Material } from "./material";
-import { UniformObj } from "../uniform-utils";
+import { UniformItem } from "../uniform-utils";
 import { Texture } from "../texture";
+import { UniformBufferItem } from "../uniform-manager";
 export interface ShaderMaterialOptions {
     code: string;
-    uniforms?: UniformObj[];
+    uniforms?: UniformItem[];
     textures?: Texture[];
+    buffers?: UniformBufferItem[];
 }
 export declare class ShaderMaterial extends Material {
     private _options;

@@ -6,7 +6,7 @@ export declare abstract class Geometry {
     protected _uvBuffer: GPUBuffer;
     protected _indexCount: number;
     protected _vertexCount: number;
-    constructor(renderer: Renderer, vertexBuffer: GPUBuffer, indexBuffer: GPUBuffer, uvBuffer: GPUBuffer, indexCount: number, vertexCount: number);
+    constructor(renderer: Renderer, vertexBuffer: GPUBuffer, indexBuffer: GPUBuffer, indexCount: number, vertexCount: number);
     get device(): GPUDevice;
     get vertexBuffer(): GPUBuffer;
     get indexBuffer(): GPUBuffer;

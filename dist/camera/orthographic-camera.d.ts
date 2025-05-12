@@ -23,7 +23,7 @@ export declare class OrthographicCamera extends Camera {
     constructor({ left, // Default frustum spans -1 to 1 in X and Y
     right, bottom, top, near, far, position, // Default position
     target, // Default target (origin)
-    up }?: {
+    up, }?: {
         left?: number;
         right?: number;
         bottom?: number;
@@ -36,7 +36,7 @@ export declare class OrthographicCamera extends Camera {
     });
     updateProjectionMatrix(): void;
     updateViewMatrix(): void;
-    setPosition(newPosition: Vec3): void;
+    setPosition(x: number, y: number, z: number): void;
     setTarget(newTarget: Vec3): void;
     setUp(newUp: Vec3): void;
     setLeft(newLeft: number): void;

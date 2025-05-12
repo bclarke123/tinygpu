@@ -7,3 +7,4 @@ export * as camera from "./camera";
 export * as geometry from "./geometry";
 export * as material from "./materials";
 export * as compute from "./compute/compute-task";
+export * as fluid from "./fluid";

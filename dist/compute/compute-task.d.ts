@@ -1,9 +1,6 @@
 import { Vec3 } from "wgpu-matrix";
 import { Texture } from "../texture";
-export interface ComputeBufferObj {
-    type: GPUBufferBindingType;
-    buffer: GPUBuffer;
-}
+import { UniformBufferItem } from "../uniform-manager";
 export interface ComputeTextureObj {
     texture: Texture;
     accessType: "sample" | "storageRead" | "storageWrite" | "storageReadWrite";
@@ -19,9 +16,9 @@ export interface ComputeTaskOptions {
     shader: GPUShaderModule;
     entryPoint: string;
     dispatchCount: Vec3;
-    buffers?: ComputeBufferObj[];
+    buffers?: UniformBufferItem[];
     textures?: ComputeTextureObj[];
-    samplers: ComputeSamplerObj[];
+    samplers?: ComputeSamplerObj[];
 }
 export declare class ComputeTask {
     private _options;

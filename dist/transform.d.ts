@@ -15,8 +15,10 @@ export declare class Transform {
     get scale(): Vec3;
     set position(value: Vec3);
     set quaternion(value: Quat);
-    setRotation(xValue: number, yValue: number, zValue: number, order?: RotationOrder): void;
     set scale(value: Vec3);
+    setPosition(x: number, y: number, z: number): void;
+    setRotation(xValue: number, yValue: number, zValue: number, order?: RotationOrder): void;
+    setScale(x: number, y: number, z: number): void;
     /** Gets the local transformation matrix, recalculating if necessary. */
     get localMatrix(): Mat4;
     /** Gets the world transformation matrix, recalculating if necessary. */

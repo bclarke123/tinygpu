@@ -1,4 +1,5 @@
 import { UniformManager } from "../uniform-manager";
+import { UniformItem } from "../uniform-utils";
 export declare abstract class Material {
     protected _uniformManager: UniformManager;
     constructor(uniformManager?: UniformManager);
@@ -6,5 +7,6 @@ export declare abstract class Material {
     abstract get shaderCode(): GPUShaderModule;
     get bindGroupLayout(): GPUBindGroupLayout | undefined;
     get bindGroup(): GPUBindGroup | undefined;
+    updateUniform(uniform: UniformItem): void;
     update(): void;
 }

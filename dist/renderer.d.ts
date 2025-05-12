@@ -8,6 +8,7 @@ import { Mesh } from "./mesh";
 import { Scene } from "./scene";
 import { ComputeTask } from "./compute/compute-task";
 import { ImageTexture, MappedTexture } from "./texture";
+import { UniformBufferItem } from "./uniform-manager";
 export interface RendererOptions {
     canvas?: HTMLCanvasElement;
 }
@@ -31,14 +32,15 @@ export declare class Renderer {
     init(): Promise<void>;
     initCanvas(canvas?: HTMLCanvasElement): void;
     createShaderModule(descriptor: GPUShaderModuleDescriptor): GPUShaderModule;
-    createBuffer<T extends Float32Array | Uint16Array | Uint8Array>(arr: T, usage: number): GPUBuffer;
+    createBuffer<T extends Float32Array | Uint32Array | Uint16Array | Uint8Array>(arr: T, usage: GPUBufferUsageFlags): GPUBuffer;
+    createSizedBuffer(size: number, usage: GPUBufferUsageFlags): GPUBuffer;
     pipelineFor(scene: Scene, mesh: Mesh): GPURenderPipeline;
     render(scene: Scene, camera: Camera): void;
     computePipelineFor(task: ComputeTask): GPUComputePipeline;
     compute(tasks: ComputeTask[]): void;
     createMaterial<T extends Material, O>(c: new (device: GPUDevice, o?: O) => T, o?: O): T;
     createGeometry<T extends Geometry>(c: new (renderer: Renderer) => T): T;
-    createMesh(geo: Geometry, mat: Material): Mesh;
+    createMesh(geo: Geometry, mat: Material, instances?: number, buffers?: UniformBufferItem[]): Mesh;
     createScene(): Scene;
     createPerspectiveCamera(options?: PerspectiveCameraProps): PerspectiveCamera;
     createOrthographicCamera(options?: OrthographicCameraProps): OrthographicCamera;
