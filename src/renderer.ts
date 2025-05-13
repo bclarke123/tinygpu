@@ -12,7 +12,7 @@ import { Geometry } from "./geometry/geometry";
 import { Material } from "./materials/material";
 import { Mesh } from "./mesh";
 import { Scene } from "./scene";
-import { ComputeTask } from "./compute/compute-task";
+import { ComputeTask, ComputeTaskOptions } from "./compute/compute-task";
 import { ImageTexture, MappedTexture } from "./texture";
 import { UniformBufferItem } from "./uniform-manager";
 
@@ -277,7 +277,7 @@ export class Renderer {
 
   computePipelineFor(task: ComputeTask): GPUComputePipeline {
     if (!this._computePipelineCache[task.cacheKey]) {
-      const bgl = task.getBindGroupLayout(this.device);
+      const bgl = task.bindGroupLayout;
 
       const layout = this.device.createPipelineLayout({
         label: `${task.label} Pipeline Layout`,
@@ -287,6 +287,7 @@ export class Renderer {
       const ret = this.device.createComputePipeline({
         layout,
         compute: {
+          entryPoint: task.entryPoint,
           module: task.shaderModule,
         },
       });
@@ -304,7 +305,7 @@ export class Renderer {
     for (const task of tasks) {
       const pipeline = this.computePipelineFor(task);
       const size = task.dispatchCount;
-      const bg = task.getBindGroup(this.device);
+      const bg = task.bindGroup;
 
       passEncoder.setPipeline(pipeline);
       passEncoder.setBindGroup(0, bg);
@@ -366,5 +367,9 @@ export class Renderer {
 
   createSampler(descriptor: GPUSamplerDescriptor): GPUSampler {
     return this.device.createSampler(descriptor);
+  }
+
+  createComputeTask(options: ComputeTaskOptions): ComputeTask {
+    return new ComputeTask(this.device, options);
   }
 }
