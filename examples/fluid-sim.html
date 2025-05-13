@@ -44,6 +44,7 @@
                     nParticles /* particles */,
                     gridSize /* grid size */,
                 );
+
                 const sim = new tinygpu.fluid.FluidSimulation(
                     renderer,
                     simOptions,
@@ -118,6 +119,7 @@ fn fs_main(vs: VSOut) -> @location(0) vec4f {
                                 value: sim.pingpong,
                             },
                         ],
+                        entryPoint: "main"
                     },
                 );
 
@@ -140,19 +142,18 @@ fn fs_main(vs: VSOut) -> @location(0) vec4f {
 
                 const animate = () => {
                     sim.tick();
-                    // sim.tick();
 
                     mat.updateUniform({
                         name: "pingpong",
                         value: sim.pingpong,
                     });
                     renderer.render(scene, camera);
-                    requestAnimationFrame(animate);
+                    // requestAnimationFrame(animate);
                 };
                 animate();
 
-                // await sim.inspectParticles();
-                // await sim.inspectGridVelocities();
+                await sim.inspectParticles();
+                await sim.inspectGridVelocities();
             });
         </script>
     </body>

@@ -78,7 +78,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     textureStore(outputTexture, texelCoords, vec4(newcol, 1.0));
 }
 
-                  `,
+                  `
                 });
 
                 // @workgroup_size(16, 16, 1) in shader above
@@ -88,23 +88,27 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                     1
                 ];
 
-                const task = new tinygpu.compute.ComputeTask({
+                const task = renderer.createComputeTask({
                     shader,
                     dispatchCount,
-                    samplers: [{ type: "filtering", sampler }],
+                    samplers: [{
+                        visibility: GPUShaderStage.COMPUTE,
+                        type: "filtering",
+                        sampler 
+                    }],
                     textures: [
                         {
+                            visibility: GPUShaderStage.COMPUTE,
                             accessType: "sample",
                             texture: tex,
                         },
                         {
+                            visibility: GPUShaderStage.COMPUTE,
                             accessType: "write-only",
                             texture: target,
                         },
                     ],
                 });
-
-                renderer.compute([task]);
 
                 const geo = renderer.createGeometry(
                     tinygpu.geometry.BigTriangle,
@@ -119,6 +123,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
                 scene.add(mesh);
 
+                renderer.compute([task]);
                 renderer.render(scene, camera);
             });
         </script>
