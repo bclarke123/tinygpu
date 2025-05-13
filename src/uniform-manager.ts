@@ -22,6 +22,14 @@ export interface UniformTextureItem {
     dimension?: GPUTextureViewDimension;
 }
 
+export interface UniformManagerOptions {
+    uniforms?: UniformItem[],
+    textures?: UniformTextureItem[],
+    buffers?: UniformBufferItem[],
+    samplers?: GPUSampler[],
+    label?: string,
+}
+
 export class UniformManager {
     private _device: GPUDevice;
     private _uniforms?: UniformItem[];
@@ -38,20 +46,34 @@ export class UniformManager {
     private _bindGroup: GPUBindGroup;
     private _bindGroupLayout: GPUBindGroupLayout;
 
-    private _sampler: GPUSampler;
+    private _samplers: GPUSampler[];
 
     private _label: string;
     private _cacheKey: string;
 
-    constructor(device: GPUDevice, uniforms?: UniformItem[], textures?: UniformTextureItem[], buffers?: UniformBufferItem[], label?: string) {
+    constructor(device: GPUDevice, options: UniformManagerOptions) {
         this._device = device;
+
+        const { uniforms, textures, buffers, samplers, label } = options;
+
         this._uniforms = uniforms;
         this._textures = textures;
         this._buffers = buffers;
+        this._samplers = samplers;
 
         this._label = label;
         this._uniformsDirty = true;
         this._texturesDirty = true;
+
+        // If you cannot afford a sampler, one will be appointed for you.
+        if ((this._samplers || []).length < 1 && (this._textures || []).length > 0) {
+            this._samplers = [
+                this._device.createSampler({
+                    magFilter: "linear",
+                    minFilter: "linear",
+                })
+            ];
+        }
     }
 
     get cacheKey() {
@@ -73,6 +95,10 @@ export class UniformManager {
 
         for (const buf of this._buffers || []) {
             keys.push(buf.buffer.label);
+        }
+
+        for (const sampler of this._samplers || []) {
+            keys.push(sampler.label);
         }
 
         this._cacheKey = keys.join(":");
@@ -136,17 +162,6 @@ export class UniformManager {
         this.setUniformsDirty();
     }
 
-    get sampler(): GPUSampler {
-        if (!this._sampler) {
-            this._sampler = this._device.createSampler({
-                magFilter: "linear",
-                minFilter: "linear",
-            });
-        }
-
-        return this._sampler;
-    }
-
     get buffers(): UniformBufferItem[] {
         return this._buffers;
     }
@@ -155,7 +170,7 @@ export class UniformManager {
         const entries = [];
 
         let binding = 0;
-        const { _uniforms, _textures, _buffers } = this;
+        const { _uniforms, _textures, _samplers, _buffers } = this;
 
         if (_uniforms?.length > 0) {
             entries.push({
@@ -170,7 +185,7 @@ export class UniformManager {
             binding++;
         }
 
-        if (_textures?.length > 0) {
+        if (_samplers?.length > 0) {
             entries.push({
                 binding,
                 visibility: GPUShaderStage.FRAGMENT,
@@ -178,7 +193,9 @@ export class UniformManager {
             });
 
             binding++;
+        }
 
+        if (_textures?.length > 0) {
             for (let i = 0; i < _textures?.length; i++) {
                 entries.push({
                     binding: i + binding,
@@ -224,7 +241,7 @@ export class UniformManager {
 
     get bindGroupDescriptor(): GPUBindGroupDescriptor {
         let binding = 0;
-        const { _uniforms, _textures, _buffers } = this;
+        const { _uniforms, _textures, _samplers, _buffers } = this;
 
         const entries = [];
 
@@ -237,14 +254,18 @@ export class UniformManager {
             binding++;
         }
 
+        if (_samplers?.length > 0) {
+            for (let i = 0; i < _samplers.length; i++) {
+                entries.push({
+                    binding,
+                    resource: _samplers[i],
+                });
+
+                binding++;
+            }
+        }
+
         if (_textures?.length > 0) {
-            entries.push({
-                binding,
-                resource: this.sampler,
-            });
-
-            binding++;
-
             for (let i = 0; i < _textures?.length; i++) {
                 entries.push({
                     binding: i + binding,
@@ -264,11 +285,13 @@ export class UniformManager {
             }
         }
 
-        return {
+        const ret = {
             label: `${this._label} BindGroup`,
             layout: this.bindGroupLayout,
             entries,
         };
+
+        return ret;
     }
 
     get bindGroup(): GPUBindGroup {
