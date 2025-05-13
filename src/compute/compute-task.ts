@@ -1,61 +1,33 @@
 import { vec3, Vec3 } from "wgpu-matrix";
 import { Texture } from "../texture";
-import { UniformBufferItem } from "../uniform-manager";
-
-export interface ComputeTextureObj {
-  texture: Texture;
-  accessType: GPUStorageTextureAccess | "sample";
-  format?: GPUTextureFormat;
-  dimension?: GPUTextureViewDimension;
-}
-
-export interface ComputeSamplerObj {
-  type: GPUSamplerBindingType;
-  sampler: GPUSampler;
-}
+import { UniformBufferItem, UniformManager, UniformSamplerItem, UniformTextureItem } from "../uniform-manager";
 
 export interface ComputeTaskOptions {
   label?: string;
   shader: GPUShaderModule;
-  entryPoint: string;
+  entryPoint?: string;
   dispatchCount: Vec3;
   buffers?: UniformBufferItem[];
-  textures?: ComputeTextureObj[];
-  samplers?: ComputeSamplerObj[];
+  textures?: UniformTextureItem[];
+  samplers?: UniformSamplerItem[];
 }
 
 export class ComputeTask {
   private _options: ComputeTaskOptions;
-  private _cacheKey: string;
-  private _bindGroup: GPUBindGroup;
-  private _bindGroupLayout: GPUBindGroupLayout;
+  private _uniformManager: UniformManager;
 
-  constructor(options: ComputeTaskOptions) {
+  constructor(device: GPUDevice, options: ComputeTaskOptions) {
     this._options = options;
+    this._uniformManager = new UniformManager(device, {
+      uniformVisibility: GPUShaderStage.COMPUTE,
+      buffers: this._options.buffers,
+      textures: this._options.textures,
+      samplers: this._options.samplers
+    });
   }
 
   get cacheKey() {
-    if (this._cacheKey) {
-      return this._cacheKey;
-    }
-
-    const keys = [
-      this.label,
-      this._options.shader.label,
-      this._options.entryPoint,
-    ];
-
-    for (const buf of this._options.buffers || []) {
-      keys.push(buf.buffer.label);
-    }
-
-    for (const tex of this._options.textures || []) {
-      keys.push(tex.texture.label);
-    }
-
-    this._cacheKey = keys.join(":");
-
-    return this._cacheKey;
+    return `ComputeTask:${this.label}:${this._uniformManager.cacheKey}`;
   }
 
   get shaderModule(): GPUShaderModule {
@@ -70,146 +42,15 @@ export class ComputeTask {
     return this._options.dispatchCount || vec3.create(8, 8, 1);
   }
 
-  get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor {
-    const entries: GPUBindGroupLayoutEntry[] = [];
-
-    let binding = 0;
-    const { textures, buffers, samplers } = this._options;
-
-    if (samplers?.length > 0) {
-      for (let i = 0; i < samplers?.length; i++) {
-        entries.push({
-          binding,
-          visibility: GPUShaderStage.COMPUTE,
-          sampler: {
-            type: samplers[i].type,
-          },
-        });
-
-        binding++;
-      }
-    }
-
-    if (textures?.length > 0) {
-      for (let i = 0; i < textures?.length; i++) {
-        const tex = textures[i];
-        const viewDimension = tex.dimension || tex.texture.dimension;
-
-        if (tex.accessType === "sample") {
-          entries.push({
-            binding,
-            visibility: GPUShaderStage.COMPUTE,
-            texture: {
-              sampleType: "float",
-              viewDimension,
-              multisampled: false,
-            },
-          });
-        } else {
-          const access = tex.accessType;
-          const format = tex.format || tex.texture.format;
-
-          entries.push({
-            binding,
-            visibility: GPUShaderStage.COMPUTE,
-            storageTexture: {
-              access,
-              format,
-              viewDimension,
-            },
-          });
-        }
-
-        binding++;
-      }
-    }
-
-    if (buffers?.length > 0) {
-      for (let i = 0; i < buffers?.length; i++) {
-        entries.push({
-          binding,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: buffers[i].type },
-        });
-
-        binding++;
-      }
-    }
-
-    const ret = {
-      label: `${this.label} BindGroup Layout`,
-      entries,
-    };
-
-    return ret;
+  get bindGroupLayout(): GPUBindGroupLayout {
+    return this._uniformManager.bindGroupLayout;
   }
 
-  get bindGroupEntries(): GPUBindGroupEntry[] {
-    let binding = 0;
-    const { textures, buffers, samplers } = this._options;
-    const entries = [];
-
-    if (samplers?.length > 0) {
-      for (let i = 0; i < samplers?.length; i++) {
-        entries.push({
-          binding,
-          resource: samplers[i].sampler,
-        });
-
-        binding++;
-      }
-    }
-
-    if (textures?.length > 0) {
-      for (let i = 0; i < textures?.length; i++) {
-        entries.push({
-          binding,
-          resource: textures[i].texture.view,
-        });
-
-        binding++;
-      }
-    }
-
-    if (buffers?.length > 0) {
-      for (let i = 0; i < buffers?.length; i++) {
-        entries.push({
-          binding,
-          resource: { buffer: buffers[i].buffer },
-        });
-
-        binding++;
-      }
-    }
-
-    return entries;
+  get bindGroup(): GPUBindGroup {
+    return this._uniformManager.bindGroup;
   }
 
-  getBindGroupLayout(device: GPUDevice): GPUBindGroupLayout {
-    if (this._bindGroupLayout) {
-      return this._bindGroupLayout;
-    }
-
-    this._bindGroupLayout = device.createBindGroupLayout(
-      this.bindGroupLayoutDescriptor,
-    );
-
-    return this._bindGroupLayout;
-  }
-
-  getBindGroup(device: GPUDevice): GPUBindGroup {
-    if (this._bindGroup) {
-      return this._bindGroup;
-    }
-
-    const layout = this.getBindGroupLayout(device);
-
-    this._bindGroup = device.createBindGroup({
-      label: `${this.label} BindGroup`,
-      layout,
-      entries: this.bindGroupEntries,
-    });
-
-    return this._bindGroup;
+  get entryPoint() {
+    return this._options.entryPoint;
   }
 }
