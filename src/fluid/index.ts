@@ -182,11 +182,11 @@ export class FluidSimulation {
         vec3.create(s13Size, 1, 1),
         stage1ShaderModule,
         [
-          { buffer: this.uniformBuffer, type: "uniform" },
-          { buffer: this.gridMassBuffer, type: "storage" },
-          { buffer: this.gridMomentumBuffer, type: "storage" },
-          { buffer: this.particleBufferA, type: "read-only-storage" },
-          { buffer: this.particleBufferB, type: "storage" },
+          this.getBufferItem(this.uniformBuffer, "uniform"),
+          this.getBufferItem(this.gridMassBuffer, "storage"),
+          this.getBufferItem(this.gridMomentumBuffer, "storage"),
+          this.getBufferItem(this.particleBufferA, "read-only-storage"),
+          this.getBufferItem(this.particleBufferB, "storage"),
         ],
       ),
       this.initializeComputePass(
@@ -194,11 +194,11 @@ export class FluidSimulation {
         vec3.create(s13Size, 1, 1),
         stage1ShaderModule,
         [
-          { buffer: this.uniformBuffer, type: "uniform" },
-          { buffer: this.gridMassBuffer, type: "storage" },
-          { buffer: this.gridMomentumBuffer, type: "storage" },
-          { buffer: this.particleBufferB, type: "read-only-storage" },
-          { buffer: this.particleBufferA, type: "storage" },
+          this.getBufferItem(this.uniformBuffer, "uniform"),
+          this.getBufferItem(this.gridMassBuffer, "storage"),
+          this.getBufferItem(this.gridMomentumBuffer, "storage"),
+          this.getBufferItem(this.particleBufferB, "read-only-storage"),
+          this.getBufferItem(this.particleBufferA, "storage"),
         ],
       ),
     ];
@@ -208,10 +208,10 @@ export class FluidSimulation {
       vec3.create(s2Size, s2Size, s2Size),
       stage2ShaderModule,
       [
-        { buffer: this.uniformBuffer, type: "uniform" },
-        { buffer: this.gridMassBuffer, type: "storage" },
-        { buffer: this.gridMomentumBuffer, type: "storage" },
-        { buffer: this.gridVelocityBuffer, type: "storage" },
+        this.getBufferItem(this.uniformBuffer, "uniform"),
+        this.getBufferItem(this.gridMassBuffer, "storage"),
+        this.getBufferItem(this.gridMomentumBuffer, "storage"),
+        this.getBufferItem(this.gridVelocityBuffer, "storage"),
       ],
     );
 
@@ -221,10 +221,10 @@ export class FluidSimulation {
         vec3.create(s13Size, 1, 1),
         stage3ShaderModule,
         [
-          { buffer: this.uniformBuffer, type: "uniform" },
-          { buffer: this.gridVelocityBuffer, type: "read-only-storage" },
-          { buffer: this.particleBufferA, type: "read-only-storage" },
-          { buffer: this.particleBufferB, type: "storage" },
+          this.getBufferItem(this.uniformBuffer, "uniform"),
+          this.getBufferItem(this.gridVelocityBuffer, "read-only-storage"),
+          this.getBufferItem(this.particleBufferA, "read-only-storage"),
+          this.getBufferItem(this.particleBufferB, "storage"),
         ],
       ),
       this.initializeComputePass(
@@ -232,10 +232,10 @@ export class FluidSimulation {
         vec3.create(s13Size, 1, 1),
         stage3ShaderModule,
         [
-          { buffer: this.uniformBuffer, type: "uniform" },
-          { buffer: this.gridVelocityBuffer, type: "read-only-storage" },
-          { buffer: this.particleBufferB, type: "read-only-storage" },
-          { buffer: this.particleBufferA, type: "storage" },
+          this.getBufferItem(this.uniformBuffer, "uniform"),
+          this.getBufferItem(this.gridVelocityBuffer, "read-only-storage"),
+          this.getBufferItem(this.particleBufferB, "read-only-storage"),
+          this.getBufferItem(this.particleBufferA, "storage"),
         ],
       ),
     ];
@@ -258,13 +258,17 @@ export class FluidSimulation {
     })
   }
 
+  getBufferItem(buffer: GPUBuffer, type: GPUBufferBindingType): UniformBufferItem {
+    return { buffer, type, visibility: GPUShaderStage.COMPUTE };
+  }
+
   initializeComputePass(
     label: string,
     dispatchCount: Vec3,
     shader: GPUShaderModule,
     buffers: UniformBufferItem[],
   ): FluidSimComputeStage {
-    const task = new ComputeTask({
+    const task = this.renderer.createComputeTask({
       label,
       shader,
       entryPoint: "main",
@@ -272,7 +276,7 @@ export class FluidSimulation {
       buffers,
     });
 
-    const bindGroup = task.getBindGroup(this.renderer.device);
+    const bindGroup = task.bindGroup;
     const pipeline = this.renderer.computePipelineFor(task);
 
     return {
