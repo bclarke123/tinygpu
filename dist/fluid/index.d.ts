@@ -46,6 +46,7 @@ export declare class FluidSimulation {
     particleDataForReadback: ArrayBuffer;
     gridVelocityStagingBuffer: GPUBuffer;
     constructor(renderer: Renderer, options?: FluidSimulationOptions);
+    getBufferItem(buffer: GPUBuffer, type: GPUBufferBindingType): UniformBufferItem;
     initializeComputePass(label: string, dispatchCount: Vec3, shader: GPUShaderModule, buffers: UniformBufferItem[]): FluidSimComputeStage;
     initializeParticleBuffer(): GPUBuffer;
     tick(): void;

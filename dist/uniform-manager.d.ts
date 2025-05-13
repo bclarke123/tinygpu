@@ -8,34 +8,60 @@ export interface UniformBufferItem {
     type: GPUBufferBindingType;
     buffer: GPUBuffer;
     attributes?: UniformBufferAttribute[];
-    visibility?: number;
+    visibility?: GPUShaderStageFlags;
     stepMode?: GPUVertexStepMode;
     stride?: number;
+}
+export interface UniformTextureItem {
+    texture: Texture;
+    accessType?: GPUStorageTextureAccess | "sample";
+    visibility?: GPUShaderStageFlags;
+    format?: GPUTextureFormat;
+    dimension?: GPUTextureViewDimension;
+}
+export interface UniformSamplerItem {
+    type: GPUSamplerBindingType;
+    visibility?: GPUShaderStageFlags;
+    sampler: GPUSampler;
+}
+export interface UniformManagerOptions {
+    uniforms?: UniformItem[];
+    textures?: UniformTextureItem[];
+    buffers?: UniformBufferItem[];
+    samplers?: UniformSamplerItem[];
+    label?: string;
+    uniformVisibility?: GPUShaderStageFlags;
 }
 export declare class UniformManager {
     private _device;
     private _uniforms?;
     private _textures?;
     private _buffers?;
-    private _uniformDirty;
+    private _uniformsDirty;
     private _texturesDirty;
+    private _buffersDirty;
     private _uniformArr;
     private _uniformBuffer;
     private _bindGroup;
     private _bindGroupLayout;
-    private _sampler;
+    private _samplers;
     private _label;
-    constructor(device: GPUDevice, uniforms?: UniformItem[], textures?: Texture[], buffers?: UniformBufferItem[], label?: string);
+    private _cacheKey;
+    private uniformVisibility;
+    constructor(device: GPUDevice, options: UniformManagerOptions);
+    get cacheKey(): string;
     updateUniform(uniform: UniformItem): void;
-    updateTextures(textures?: Texture[]): void;
+    updateUniforms(uniforms?: UniformItem[]): void;
+    updateTextures(textures?: UniformTextureItem[]): void;
+    updateBuffers(buffers?: UniformBufferItem[]): void;
     update(): void;
     setTexturesDirty(): void;
     setUniformsDirty(): void;
+    setBuffersDirty(): void;
     setDirty(): void;
-    get sampler(): GPUSampler;
+    get buffers(): UniformBufferItem[];
     get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor;
     get bindGroupLayout(): GPUBindGroupLayout;
     get bindGroupDescriptor(): GPUBindGroupDescriptor;
     get bindGroup(): GPUBindGroup;
-    get buffers(): UniformBufferItem[];
 }

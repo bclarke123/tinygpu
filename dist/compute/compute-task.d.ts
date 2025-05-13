@@ -1,37 +1,23 @@
 import { Vec3 } from "wgpu-matrix";
-import { Texture } from "../texture";
-import { UniformBufferItem } from "../uniform-manager";
-export interface ComputeTextureObj {
-    texture: Texture;
-    accessType: "sample" | "storageRead" | "storageWrite" | "storageReadWrite";
-    format?: GPUTextureFormat;
-    dimension?: GPUTextureViewDimension;
-}
-export interface ComputeSamplerObj {
-    type: GPUSamplerBindingType;
-    sampler: GPUSampler;
-}
+import { UniformBufferItem, UniformSamplerItem, UniformTextureItem } from "../uniform-manager";
 export interface ComputeTaskOptions {
     label?: string;
     shader: GPUShaderModule;
-    entryPoint: string;
+    entryPoint?: string;
     dispatchCount: Vec3;
     buffers?: UniformBufferItem[];
-    textures?: ComputeTextureObj[];
-    samplers?: ComputeSamplerObj[];
+    textures?: UniformTextureItem[];
+    samplers?: UniformSamplerItem[];
 }
 export declare class ComputeTask {
     private _options;
-    private _cacheKey;
-    private _bindGroup;
-    private _bindGroupLayout;
-    constructor(options: ComputeTaskOptions);
+    private _uniformManager;
+    constructor(device: GPUDevice, options: ComputeTaskOptions);
     get cacheKey(): string;
     get shaderModule(): GPUShaderModule;
     get label(): string;
     get dispatchCount(): Vec3;
-    get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor;
-    get bindGroupEntries(): GPUBindGroupEntry[];
-    getBindGroupLayout(device: GPUDevice): GPUBindGroupLayout;
-    getBindGroup(device: GPUDevice): GPUBindGroup;
+    get bindGroupLayout(): GPUBindGroupLayout;
+    get bindGroup(): GPUBindGroup;
+    get entryPoint(): string;
 }
