@@ -15,14 +15,22 @@ export interface UniformBufferItem {
     stride?: number;
 }
 
+export interface UniformTextureItem {
+    texture: Texture;
+    accessType?: GPUStorageTextureAccess | "sample";
+    format?: GPUTextureFormat;
+    dimension?: GPUTextureViewDimension;
+}
+
 export class UniformManager {
     private _device: GPUDevice;
     private _uniforms?: UniformItem[];
-    private _textures?: Texture[];
+    private _textures?: UniformTextureItem[];
     private _buffers?: UniformBufferItem[];
 
-    private _uniformDirty = true;
+    private _uniformsDirty = true;
     private _texturesDirty = true;
+    private _buffersDirty = true;
 
     private _uniformArr: ArrayBuffer;
     private _uniformBuffer: GPUBuffer;
@@ -35,14 +43,14 @@ export class UniformManager {
     private _label: string;
     private _cacheKey: string;
 
-    constructor(device: GPUDevice, uniforms?: UniformItem[], textures?: Texture[], buffers?: UniformBufferItem[], label?: string) {
+    constructor(device: GPUDevice, uniforms?: UniformItem[], textures?: UniformTextureItem[], buffers?: UniformBufferItem[], label?: string) {
         this._device = device;
         this._uniforms = uniforms;
         this._textures = textures;
         this._buffers = buffers;
 
         this._label = label;
-        this._uniformDirty = true;
+        this._uniformsDirty = true;
         this._texturesDirty = true;
     }
 
@@ -59,12 +67,12 @@ export class UniformManager {
             keys.push(uniform.name);
         }
 
-        for (const buf of this._buffers || []) {
-            keys.push(buf.buffer.label);
+        for (const tex of this._textures || []) {
+            keys.push(tex.texture.label);
         }
 
-        for (const tex of this._textures || []) {
-            keys.push(tex.label);
+        for (const buf of this._buffers || []) {
+            keys.push(buf.buffer.label);
         }
 
         this._cacheKey = keys.join(":");
@@ -78,21 +86,36 @@ export class UniformManager {
         this.setUniformsDirty();
     }
 
-    updateTextures(textures?: Texture[]) {
+    updateUniforms(uniforms?: UniformItem[]) {
+        this._uniforms = uniforms;
+        this.setUniformsDirty();
+    }
+
+    updateTextures(textures?: UniformTextureItem[]) {
         this._textures = textures;
-        this._texturesDirty = true;
+        this.setTexturesDirty();
+    }
+
+    updateBuffers(buffers?: UniformBufferItem[]) {
+        this._buffers = buffers;
+        this.setBuffersDirty();
     }
 
     update() {
-        if (this._uniformDirty) {
+        if (this._uniformsDirty) {
             this._uniformArr = packUniforms(this._uniforms || [], this._uniformArr);
             this._uniformBuffer = uploadUniformBuffer(this._uniformArr, this._device, this._label, this._uniformBuffer);
-            this._uniformDirty = false;
+            this._uniformsDirty = false;
         }
 
         if (this._texturesDirty) {
-            (this._textures || []).forEach((t) => t.upload(this._device));
+            (this._textures || []).forEach((t) => t.texture.upload(this._device));
             this._texturesDirty = false;
+        }
+
+        if (this._buffersDirty) {
+            this._bindGroup = undefined;
+            this._bindGroupLayout = undefined;
         }
     }
 
@@ -101,7 +124,11 @@ export class UniformManager {
     }
 
     setUniformsDirty() {
-        this._uniformDirty = true;
+        this._uniformsDirty = true;
+    }
+
+    setBuffersDirty() {
+        this._buffersDirty = true;
     }
 
     setDirty() {
@@ -118,6 +145,10 @@ export class UniformManager {
         }
 
         return this._sampler;
+    }
+
+    get buffers(): UniformBufferItem[] {
+        return this._buffers;
     }
 
     get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor {
@@ -217,7 +248,7 @@ export class UniformManager {
             for (let i = 0; i < _textures?.length; i++) {
                 entries.push({
                     binding: i + binding,
-                    resource: _textures[i].view,
+                    resource: _textures[i].texture.view,
                 });
             }
         }
@@ -248,9 +279,5 @@ export class UniformManager {
         this._bindGroup = this._device.createBindGroup(this.bindGroupDescriptor);
 
         return this._bindGroup;
-    }
-
-    get buffers(): UniformBufferItem[] {
-        return this._buffers;
     }
 }

@@ -1,14 +1,14 @@
 import { Material } from "./material";
 import { UniformItem } from "../uniform-utils";
 import { Texture } from "../texture";
-import { UniformBufferItem, UniformManager } from "../uniform-manager";
+import { UniformBufferItem, UniformManager, UniformTextureItem } from "../uniform-manager";
 
 import shaderHeader from "../shaders/header.wgsl";
 
 export interface ShaderMaterialOptions {
   code: string;
   uniforms?: UniformItem[];
-  textures?: Texture[];
+  textures?: UniformTextureItem[];
   buffers?: UniformBufferItem[];
 }
 
@@ -42,7 +42,7 @@ ${this._options.code}
   }
 
   get cacheKey(): string {
-    return btoa(this._options.code);
+    return this._uniformManager.cacheKey + "-" + btoa(this._options.code);
   }
 
   get shaderCode(): GPUShaderModule {

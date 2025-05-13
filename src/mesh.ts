@@ -34,7 +34,7 @@ export class Mesh extends Transform {
   }
 
   get cacheKey(): string {
-    return `${this.geometry.cacheKey}-${this.material.cacheKey}`;
+    return `${this.geometry.cacheKey}-${this.material.cacheKey}-${this._uniformManager.cacheKey}`;
   }
 
   update() {

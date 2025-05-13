@@ -23,7 +23,13 @@ export class BasicMaterial extends Material {
           value: options.color || new Color(1, 1, 1),
         },
       ],
-      [options.map || DefaultTexture.instance],
+      [
+        {
+          texture: options.map || DefaultTexture.instance,
+          dimension: "2d",
+          accessType: "sample"
+        }
+      ],
       [],
       "BasicMaterial",
     );
