@@ -24,12 +24,12 @@ export class Mesh extends Transform {
     this.geometry = geo;
     this._instances = instances;
 
-    this._uniformManager = new UniformManager(
-      device,
-      [{ name: "model", value: this.worldMatrix }],
-      [],
-      buffers || [],
-      "Mesh",
+    this._uniformManager = new UniformManager(device,
+      {
+        uniforms: [{ name: "model", value: this.worldMatrix }],
+        buffers: buffers || [],
+        label: "Mesh",
+      }
     );
   }
 

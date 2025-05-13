@@ -17,21 +17,22 @@ export class BasicMaterial extends Material {
 
     const uniformManager = new UniformManager(
       device,
-      [
-        {
-          name: "color",
-          value: options.color || new Color(1, 1, 1),
-        },
-      ],
-      [
-        {
-          texture: options.map || DefaultTexture.instance,
-          dimension: "2d",
-          accessType: "sample"
-        }
-      ],
-      [],
-      "BasicMaterial",
+      {
+        uniforms: [
+          {
+            name: "color",
+            value: options.color || new Color(1, 1, 1),
+          },
+        ],
+        textures: [
+          {
+            texture: options.map || DefaultTexture.instance,
+            dimension: "2d",
+            accessType: "sample"
+          }
+        ],
+        label: "BasicMaterial",
+      }
     );
 
     super(uniformManager);

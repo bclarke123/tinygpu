@@ -1,6 +1,5 @@
 import { Material } from "./material";
 import { UniformItem } from "../uniform-utils";
-import { Texture } from "../texture";
 import { UniformBufferItem, UniformManager, UniformTextureItem } from "../uniform-manager";
 
 import shaderHeader from "../shaders/header.wgsl";
@@ -19,10 +18,12 @@ export class ShaderMaterial extends Material {
   constructor(device: GPUDevice, options: ShaderMaterialOptions) {
     const uniformManager = new UniformManager(
       device,
-      options.uniforms,
-      options.textures,
-      options.buffers,
-      "ShaderMaterial",
+      {
+        uniforms: options.uniforms,
+        textures: options.textures,
+        buffers: options.buffers,
+        label: "ShaderMaterial",
+      }
     );
 
     super(uniformManager);

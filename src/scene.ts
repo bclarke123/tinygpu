@@ -11,13 +11,15 @@ export class Scene extends Transform {
 
         this._uniformManager = new UniformManager(
             device,
-            [
-                { name: "projection matrix", value: mat4.create() },
-                { name: "view matrix", value: mat4.create() },
-                { name: "camera position", value: vec3.create() },
-                { name: "resolution", value: vec2.create(1, 1) },
-                { name: "time", value: performance.now() / 1000 },
-            ]
+            {
+                uniforms: [
+                    { name: "projection matrix", value: mat4.create() },
+                    { name: "view matrix", value: mat4.create() },
+                    { name: "camera position", value: vec3.create() },
+                    { name: "resolution", value: vec2.create(1, 1) },
+                    { name: "time", value: performance.now() / 1000 },
+                ]
+            }
         );
     }
 
