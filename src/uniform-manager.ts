@@ -10,7 +10,7 @@ export interface UniformBufferItem {
     type: GPUBufferBindingType;
     buffer: GPUBuffer;
     attributes?: UniformBufferAttribute[];
-    visibility?: number;
+    visibility?: GPUShaderStageFlags;
     stepMode?: GPUVertexStepMode;
     stride?: number;
 }
@@ -18,16 +18,24 @@ export interface UniformBufferItem {
 export interface UniformTextureItem {
     texture: Texture;
     accessType?: GPUStorageTextureAccess | "sample";
+    visibility?: GPUShaderStageFlags;
     format?: GPUTextureFormat;
     dimension?: GPUTextureViewDimension;
 }
 
+export interface UniformSamplerItem {
+    type: GPUSamplerBindingType;
+    visibility?: GPUShaderStageFlags;
+    sampler: GPUSampler;
+}
+
 export interface UniformManagerOptions {
-    uniforms?: UniformItem[],
-    textures?: UniformTextureItem[],
-    buffers?: UniformBufferItem[],
-    samplers?: GPUSampler[],
-    label?: string,
+    uniforms?: UniformItem[];
+    textures?: UniformTextureItem[];
+    buffers?: UniformBufferItem[];
+    samplers?: UniformSamplerItem[];
+    label?: string;
+    uniformVisibility?: GPUShaderStageFlags;
 }
 
 export class UniformManager {
@@ -46,15 +54,17 @@ export class UniformManager {
     private _bindGroup: GPUBindGroup;
     private _bindGroupLayout: GPUBindGroupLayout;
 
-    private _samplers: GPUSampler[];
+    private _samplers: UniformSamplerItem[];
 
     private _label: string;
     private _cacheKey: string;
 
+    private uniformVisibility: GPUShaderStageFlags = GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT;
+
     constructor(device: GPUDevice, options: UniformManagerOptions) {
         this._device = device;
 
-        const { uniforms, textures, buffers, samplers, label } = options;
+        const { uniforms, textures, buffers, samplers, label, uniformVisibility } = options;
 
         this._uniforms = uniforms;
         this._textures = textures;
@@ -65,13 +75,20 @@ export class UniformManager {
         this._uniformsDirty = true;
         this._texturesDirty = true;
 
+        if (uniformVisibility) {
+            this.uniformVisibility = uniformVisibility;
+        }
+
         // If you cannot afford a sampler, one will be appointed for you.
         if ((this._samplers || []).length < 1 && (this._textures || []).length > 0) {
             this._samplers = [
-                this._device.createSampler({
-                    magFilter: "linear",
-                    minFilter: "linear",
-                })
+                {
+                    sampler: this._device.createSampler({
+                        magFilter: "linear",
+                        minFilter: "linear",
+                    }),
+                    type: "filtering"
+                }
             ];
         }
     }
@@ -98,7 +115,7 @@ export class UniformManager {
         }
 
         for (const sampler of this._samplers || []) {
-            keys.push(sampler.label);
+            keys.push(sampler.sampler.label);
         }
 
         this._cacheKey = keys.join(":");
@@ -175,37 +192,62 @@ export class UniformManager {
         if (_uniforms?.length > 0) {
             entries.push({
                 binding: 0,
-                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                visibility: this.uniformVisibility,
                 buffer: {
-                    type: "uniform" as GPUBufferBindingType,
+                    type: "uniform",
                     hasDynamicOffset: false,
                     minBindingSize: 0,
                 },
             });
+
             binding++;
         }
 
         if (_samplers?.length > 0) {
-            entries.push({
-                binding,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: { type: "filtering" },
-            });
+            const defaultVis = GPUShaderStage.FRAGMENT;
+            for (let i = 0; i < _samplers.length; i++) {
+                entries.push({
+                    binding,
+                    visibility: _samplers[i].visibility || defaultVis,
+                    sampler: { type: _samplers[i].type },
+                });
 
-            binding++;
+                binding++;
+            }
         }
 
         if (_textures?.length > 0) {
+            const defaultVis = GPUShaderStage.FRAGMENT;
             for (let i = 0; i < _textures?.length; i++) {
-                entries.push({
-                    binding: i + binding,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    texture: {
-                        sampleType: "float",
-                        viewDimension: "2d",
-                        multisampled: false,
-                    },
-                });
+                const tex = _textures[i];
+                const viewDimension = tex.dimension || tex.texture.dimension;
+
+                if (tex.accessType === "sample") {
+                    entries.push({
+                        binding,
+                        visibility: tex.visibility || defaultVis,
+                        texture: {
+                            sampleType: "float",
+                            viewDimension,
+                            multisampled: false,
+                        },
+                    });
+                } else {
+                    const access = tex.accessType;
+                    const format = tex.format || tex.texture.format;
+
+                    entries.push({
+                        binding,
+                        visibility: tex.visibility || defaultVis,
+                        storageTexture: {
+                            access,
+                            format,
+                            viewDimension,
+                        },
+                    });
+                }
+
+                binding++;
             }
         }
 
@@ -258,7 +300,7 @@ export class UniformManager {
             for (let i = 0; i < _samplers.length; i++) {
                 entries.push({
                     binding,
-                    resource: _samplers[i],
+                    resource: _samplers[i].sampler,
                 });
 
                 binding++;
