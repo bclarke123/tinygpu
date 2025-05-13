@@ -60,7 +60,7 @@
 @group(0) @binding(1) var inputTexture: texture_2d<f32>;
 @group(0) @binding(2) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 
-@compute @workgroup_size(8, 8, 1)
+@compute @workgroup_size(16, 16, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let textureDims = textureDimensions(inputTexture);
 
@@ -81,10 +81,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                   `,
                 });
 
-                // @workgroup_size(8, 8, 1) in shader above
+                // @workgroup_size(16, 16, 1) in shader above
                 const dispatchCount = [
-                    Math.ceil(tex.width / 8),
-                    Math.ceil(tex.height / 8),
+                    Math.ceil(tex.width / 16),
+                    Math.ceil(tex.height / 16),
                     1
                 ];
 
@@ -98,7 +98,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                             texture: tex,
                         },
                         {
-                            accessType: "storageWrite",
+                            accessType: "write-only",
                             texture: target,
                         },
                     ],
