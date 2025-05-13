@@ -33,6 +33,7 @@ export class UniformManager {
     private _sampler: GPUSampler;
 
     private _label: string;
+    private _cacheKey: string;
 
     constructor(device: GPUDevice, uniforms?: UniformItem[], textures?: Texture[], buffers?: UniformBufferItem[], label?: string) {
         this._device = device;
@@ -43,6 +44,32 @@ export class UniformManager {
         this._label = label;
         this._uniformDirty = true;
         this._texturesDirty = true;
+    }
+
+    get cacheKey() {
+        if (this._cacheKey) {
+            return this._cacheKey;
+        }
+
+        const keys = [
+            this._label,
+        ];
+
+        for (const uniform of this._uniforms || []) {
+            keys.push(uniform.name);
+        }
+
+        for (const buf of this._buffers || []) {
+            keys.push(buf.buffer.label);
+        }
+
+        for (const tex of this._textures || []) {
+            keys.push(tex.label);
+        }
+
+        this._cacheKey = keys.join(":");
+
+        return this._cacheKey;
     }
 
     updateUniform(uniform: UniformItem) {
