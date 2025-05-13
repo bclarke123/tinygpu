@@ -4,7 +4,7 @@ import { UniformBufferItem } from "../uniform-manager";
 
 export interface ComputeTextureObj {
   texture: Texture;
-  accessType: "sample" | "storageRead" | "storageWrite" | "storageReadWrite";
+  accessType: GPUStorageTextureAccess | "sample";
   format?: GPUTextureFormat;
   dimension?: GPUTextureViewDimension;
 }
@@ -106,13 +106,7 @@ export class ComputeTask {
             },
           });
         } else {
-          const { accessType } = tex;
-          const access =
-            accessType === "storageReadWrite"
-              ? "read-write"
-              : accessType === "storageWrite"
-                ? "write-only"
-                : "read-only";
+          const access = tex.accessType;
           const format = tex.format || tex.texture.format;
 
           entries.push({
