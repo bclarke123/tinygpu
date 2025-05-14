@@ -48,11 +48,6 @@
                         GPUTextureUsage.STORAGE_BINDING,
                 });
 
-                const sampler = renderer.createSampler({
-                    magFilter: "linear",
-                    minFilter: "linear",
-                });
-
                 const shader = renderer.createShaderModule({
                     code: /* wgsl */ `
 
@@ -94,7 +89,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                     samplers: [{
                         visibility: GPUShaderStage.COMPUTE,
                         type: "filtering",
-                        sampler 
+                        sampler: renderer.createSampler({
+                            magFilter: "linear",
+                            minFilter: "linear",
+                        })
                     }],
                     textures: [
                         {
