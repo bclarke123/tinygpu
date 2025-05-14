@@ -83,16 +83,19 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                         Math.ceil(tex.height / 16),
                         1,
                     ],
-                    samplers: [
-                        {
-                            visibility: GPUShaderStage.COMPUTE,
-                            type: "filtering",
-                            sampler: renderer.createSampler({
-                                magFilter: "linear",
-                                minFilter: "linear",
-                            }),
-                        },
-                    ],
+
+                    // You can pass in a sampler, but a filtering / linear one will be
+                    // created for you if you don't, if you pass in textures
+
+                    // samplers: [
+                    //     {
+                    //         type: "filtering",
+                    //         sampler: renderer.createSampler({
+                    //             magFilter: "linear",
+                    //             minFilter: "linear",
+                    //         }),
+                    //     },
+                    // ],
                     textures: [
                         {
                             accessType: "sample",
@@ -145,9 +148,10 @@ fn fs_main(in: VSOut) -> @location(0) vec4f {
   let sa = textureSample(original, aSampler, uv);
   let sb = textureSample(inverted, aSampler, uv);
 
-  let b_amt = smoothstep(0.0, 0.1, pct) * smoothstep(0.6, 0.5, pct);
+  // Creates a ramp something like /¯¯¯¯\____
+  let bAmt = smoothstep(0.0, 0.1, pct) * smoothstep(0.6, 0.5, pct);
 
-  return mix(sa, sb, b_amt);
+  return mix(sa, sb, bAmt);
 }
 
                       `,
