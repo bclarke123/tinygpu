@@ -1,8 +1,6 @@
-import { Renderer } from "../renderer"; // Assuming this path is correct
+import { Renderer } from "../renderer";
 import { Geometry } from "./geometry";
 
-// Helper functions for vector math (can be moved to a utility file if not already)
-// These were also used in the flat-shaded Sphere.
 function crossProduct(a: [number, number, number], b: [number, number, number]): [number, number, number] {
     return [
         a[1] * b[2] - a[2] * b[1],

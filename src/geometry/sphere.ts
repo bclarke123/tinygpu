@@ -1,4 +1,4 @@
-import { Renderer } from "../renderer"; // Assuming this path is correct
+import { Renderer } from "../renderer";
 import { Geometry } from "./geometry";
 
 interface SphereGeometryData {
@@ -10,7 +10,6 @@ interface SphereGeometryData {
     floatsPerVertex: number;
 }
 
-// Helper function for vector math (can be moved to a utility file)
 function crossProduct(a: [number, number, number], b: [number, number, number]): [number, number, number] {
     return [
         a[1] * b[2] - a[2] * b[1],
@@ -43,7 +42,7 @@ function _createSphereGeometryData(
     const indexData: number[] = [];
 
     if (!flatShading) {
-        // Smooth Shading Logic (original)
+        // Smooth Shading Logic
         for (let latNumber = 0; latNumber <= latitudeBands; latNumber++) {
             const theta = (latNumber * Math.PI) / latitudeBands;
             const sinTheta = Math.sin(theta);
@@ -214,7 +213,7 @@ export class SphereGeometry extends Geometry {
             vertexGPUBuffer,
             indexGPUBuffer,
             indexCount,
-            vertexCount, // This vertexCount is now correctly handled
+            vertexCount,
         );
 
         this._arrayStride = arrayStride;
