@@ -23,6 +23,14 @@ struct VSIn {
 @group(BG_SCENE) @binding(0) var<uniform> scene_uniforms: SceneUniforms;
 @group(BG_MODEL) @binding(0) var<uniform> model_uniforms: ModelUniforms;
 
+fn projectionView() -> mat4x4<f32> {
+  return scene_uniforms.projection * scene_uniforms.view;
+}
+
+fn viewModel() -> mat4x4<f32> {
+  return scene_uniforms.view * model_uniforms.model;
+}
+
 fn projectionViewModel() -> mat4x4<f32> {
     return scene_uniforms.projection * scene_uniforms.view * model_uniforms.model;
 }
