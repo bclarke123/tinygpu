@@ -1,5 +1,4 @@
 import { vec3, Vec3 } from "wgpu-matrix";
-import { Texture } from "../texture";
 import { UniformBufferItem, UniformManager, UniformSamplerItem, UniformTextureItem } from "../uniform-manager";
 
 export interface ComputeTaskOptions {

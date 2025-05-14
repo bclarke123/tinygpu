@@ -1,4 +1,4 @@
-import { Color } from "./color"; // Assuming Color class exists and has a uniformValue() method
+import { Color } from "./color";
 
 // --- Type Definitions for Uniforms ---
 
