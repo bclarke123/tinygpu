@@ -26,3 +26,21 @@ struct VSIn {
 fn projectionViewModel() -> mat4x4<f32> {
     return scene_uniforms.projection * scene_uniforms.view * model_uniforms.model;
 }
+
+// Resize the UVs of the texture so it centers and covers the screen
+fn arFill(texSize: vec2f, screenSize: vec2f, uv: vec2f) -> vec2f {
+  let texAr = texSize.x / texSize.y;
+  let screenAr = screenSize.x / screenSize.y;
+  let dAr = texAr / screenAr;
+
+  // Decide whether the image will be taller or wider than the screen
+  let ar = mix(vec2(1.0, dAr), vec2(1.0 / dAr, 1.0), step(1.0, dAr));
+
+  // Center along the axis that's larger than the screen
+  let offset = mix(vec2(0.0, 1.0 / screenAr - 1.0 / texAr), vec2(screenAr - texAr, 0.0), step(1.0, dAr));
+
+  // uv will be either wider or taller than the canvas at the correct aspect ratio, centered
+  let ret = uv * ar - offset * 0.5;
+
+  return ret;
+}
