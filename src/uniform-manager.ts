@@ -36,6 +36,7 @@ export interface UniformManagerOptions {
     samplers?: UniformSamplerItem[];
     label?: string;
     uniformVisibility?: GPUShaderStageFlags;
+    compute?: boolean;
 }
 
 export class UniformManager {
@@ -47,6 +48,8 @@ export class UniformManager {
     private _uniformsDirty = true;
     private _texturesDirty = true;
     private _buffersDirty = true;
+
+    private _compute = false;
 
     private _uniformArr: ArrayBuffer;
     private _uniformBuffer: GPUBuffer;
@@ -64,7 +67,7 @@ export class UniformManager {
     constructor(device: GPUDevice, options: UniformManagerOptions) {
         this._device = device;
 
-        const { uniforms, textures, buffers, samplers, label, uniformVisibility } = options;
+        const { uniforms, textures, buffers, samplers, label, uniformVisibility, compute } = options;
 
         this._uniforms = uniforms;
         this._textures = textures;
@@ -74,6 +77,8 @@ export class UniformManager {
         this._label = label;
         this._uniformsDirty = true;
         this._texturesDirty = true;
+
+        this._compute = Boolean(compute);
 
         if (uniformVisibility) {
             this.uniformVisibility = uniformVisibility;
@@ -204,7 +209,7 @@ export class UniformManager {
         }
 
         if (_samplers?.length > 0) {
-            const defaultVis = GPUShaderStage.FRAGMENT;
+            const defaultVis = this._compute ? GPUShaderStage.COMPUTE : GPUShaderStage.FRAGMENT;
             for (let i = 0; i < _samplers.length; i++) {
                 entries.push({
                     binding,
@@ -217,12 +222,13 @@ export class UniformManager {
         }
 
         if (_textures?.length > 0) {
-            const defaultVis = GPUShaderStage.FRAGMENT;
+            const defaultVis = this._compute ? GPUShaderStage.COMPUTE : GPUShaderStage.FRAGMENT;
             for (let i = 0; i < _textures?.length; i++) {
                 const tex = _textures[i];
                 const viewDimension = tex.dimension || tex.texture.dimension;
+                const access = tex.accessType || "sample";
 
-                if (tex.accessType === "sample") {
+                if (access === "sample") {
                     entries.push({
                         binding,
                         visibility: tex.visibility || defaultVis,
@@ -233,7 +239,6 @@ export class UniformManager {
                         },
                     });
                 } else {
-                    const access = tex.accessType;
                     const format = tex.format || tex.texture.format;
 
                     entries.push({
