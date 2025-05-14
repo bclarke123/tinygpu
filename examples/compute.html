@@ -95,12 +95,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                     ],
                     textures: [
                         {
-                            visibility: GPUShaderStage.COMPUTE,
                             accessType: "sample",
                             texture: tex,
                         },
                         {
-                            visibility: GPUShaderStage.COMPUTE,
                             accessType: "write-only",
                             texture: target,
                         },
@@ -154,14 +152,8 @@ fn fs_main(in: VSOut) -> @location(0) vec4f {
 
                       `,
                         textures: [
-                            {
-                                texture: tex,
-                                accessType: "sample",
-                            },
-                            {
-                                texture: target,
-                                accessType: "sample",
-                            },
+                            { texture: tex, },
+                            { texture: target, },
                         ],
                     },
                 );
