@@ -73,27 +73,29 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     textureStore(outputTexture, texelCoords, vec4(newcol, 1.0));
 }
 
-                  `
+                  `,
                 });
 
                 // @workgroup_size(16, 16, 1) in shader above
                 const dispatchCount = [
                     Math.ceil(tex.width / 16),
                     Math.ceil(tex.height / 16),
-                    1
+                    1,
                 ];
 
                 const task = renderer.createComputeTask({
                     shader,
                     dispatchCount,
-                    samplers: [{
-                        visibility: GPUShaderStage.COMPUTE,
-                        type: "filtering",
-                        sampler: renderer.createSampler({
-                            magFilter: "linear",
-                            minFilter: "linear",
-                        })
-                    }],
+                    samplers: [
+                        {
+                            visibility: GPUShaderStage.COMPUTE,
+                            type: "filtering",
+                            sampler: renderer.createSampler({
+                                magFilter: "linear",
+                                minFilter: "linear",
+                            }),
+                        },
+                    ],
                     textures: [
                         {
                             visibility: GPUShaderStage.COMPUTE,
@@ -112,9 +114,62 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                     tinygpu.geometry.BigTriangle,
                 );
                 const mat = renderer.createMaterial(
-                    tinygpu.material.BasicMaterial,
+                    tinygpu.material.ShaderMaterial,
                     {
-                        map: target,
+                        code: /* wgsl */ `
+
+@group(BG_UNIFORMS) @binding(0) var aSampler: sampler;
+@group(BG_UNIFORMS) @binding(1) var original: texture_2d<f32>;
+@group(BG_UNIFORMS) @binding(2) var inverted: texture_2d<f32>;
+
+const cycle_sec: f32 = 20.0;
+
+struct VSOut {
+  @builtin(position) pos: vec4f,
+  @location(0) uv: vec2f
+}
+
+@vertex
+fn vs_main(in: VSIn) -> VSOut {
+  let pos = projectionViewModel() * vec4(in.position, 1.0);
+  return VSOut(
+    pos,
+    in.uv
+  );
+}
+
+@fragment
+fn fs_main(in: VSOut) -> @location(0) vec4f {
+  let textureDims = textureDimensions(original); // we know both are the same size here
+  let screenAr = scene_uniforms.resolution.x / scene_uniforms.resolution.y;
+  let texAr = f32(textureDims.x) / f32(textureDims.y);
+
+  let ar = mix(vec2(1.0, texAr / screenAr), vec2(screenAr / texAr, 1.0), step(1.0, texAr / screenAr));
+  let offset = mix(vec2(0.0, texAr - screenAr), vec2(screenAr - texAr, 0.0), step(1.0, texAr / screenAr));
+  let uv = in.uv * ar - offset * 0.5;
+
+  let time = scene_uniforms.time - in.uv.x * 4.0;
+  let pct = (time % cycle_sec) / cycle_sec;
+
+  let sa = textureSample(original, aSampler, uv);
+  let sb = textureSample(inverted, aSampler, uv);
+
+  let b_amt = smoothstep(0.0, 0.1, pct) * smoothstep(0.6, 0.5, pct);
+
+  return mix(sa, sb, b_amt);
+}
+
+                      `,
+                        textures: [
+                            {
+                                texture: tex,
+                                accessType: "sample",
+                            },
+                            {
+                                texture: target,
+                                accessType: "sample",
+                            },
+                        ],
                     },
                 );
                 const mesh = renderer.createMesh(geo, mat);
@@ -122,7 +177,12 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 scene.add(mesh);
 
                 renderer.compute([task]);
-                renderer.render(scene, camera);
+
+                const animate = () => {
+                    renderer.render(scene, camera);
+                    requestAnimationFrame(animate);
+                };
+                animate();
             });
         </script>
     </body>
