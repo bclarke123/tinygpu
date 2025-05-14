@@ -321,12 +321,15 @@ export class Renderer {
   public createMaterial<T extends Material, O>(
     c: new (device: GPUDevice, o?: O) => T,
     o?: O,
-  ) {
+  ): T {
     return new c(this.device, o);
   }
 
-  createGeometry<T extends Geometry>(c: new (renderer: Renderer) => T) {
-    return new c(this);
+  public createGeometry<T extends Geometry, O>(
+    c: new (renderer: Renderer, o?: O) => T,
+    o?: O
+  ): T {
+    return new c(this, o);
   }
 
   createMesh(
