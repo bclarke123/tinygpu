@@ -21,7 +21,8 @@ export class ComputeTask {
       uniformVisibility: GPUShaderStage.COMPUTE,
       buffers: this._options.buffers,
       textures: this._options.textures,
-      samplers: this._options.samplers
+      samplers: this._options.samplers,
+      compute: true
     });
   }
 
