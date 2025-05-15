@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+    <head>
+        <title>tinygpu example: Blinn-Phong material</title>
+        <style type="text/css">
+            body {
+                margin: 0;
+                overflow: hidden;
+            }
+
+            canvas {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+            }
+        </style>
+    </head>
+
+    <body>
+        <canvas id="canvas"></canvas>
+        <script src="../dist/index.js"></script>
+        <script>
+            document.addEventListener("DOMContentLoaded", async () => {
+                const canvas = document.getElementById("canvas");
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                const renderer = new tinygpu.Renderer({ canvas });
+                await renderer.init();
+
+                const scene = renderer.createScene();
+                const camera = renderer.createPerspectiveCamera();
+
+                const createMesh = (geoType) => {
+                    const geo = renderer.createGeometry(geoType);
+                    const mat = renderer.createMaterial(
+                        tinygpu.material.BlinnPhongMaterial,
+                        {},
+                    );
+                    const mesh = renderer.createMesh(geo, mat);
+                    return mesh;
+                };
+
+                const parent = new tinygpu.Transform();
+
+                const radius = 3;
+                const third = (Math.PI * 2) / 3;
+
+                const cube = createMesh(tinygpu.geometry.CubeGeometry);
+                cube.setPosition(
+                    Math.cos(third) * radius,
+                    0,
+                    Math.sin(third) * radius,
+                );
+                parent.add(cube);
+
+                const sphere = createMesh(tinygpu.geometry.SphereGeometry);
+                sphere.setPosition(
+                    Math.cos(third * 2) * radius,
+                    0,
+                    Math.sin(third * 2) * radius,
+                );
+                parent.add(sphere);
+
+                const tet = createMesh(tinygpu.geometry.TetrahedronGeometry);
+                tet.setPosition(
+                    Math.cos(third * 3) * radius,
+                    0,
+                    Math.sin(third * 3) * radius,
+                );
+                parent.add(tet);
+
+                scene.add(parent);
+
+                const light = new tinygpu.lights.Light();
+                scene.add(light);
+
+                const animate = () => {
+                    const now = performance.now() / 1000;
+                    parent.setRotation(0, now, now * 0.7);
+                    renderer.render(scene, camera);
+                    requestAnimationFrame(animate);
+                };
+
+                animate();
+            });
+        </script>
+    </body>
+</html>
