@@ -35,15 +35,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     const scene = renderer.createScene();
     const camera = renderer.createPerspectiveCamera();
 
-    const geo = renderer.createGeometry(tinygpu.geometry.CubeGeometry);
-    const mat = renderer.createMaterial(tinygpu.material.UVMaterial);
-    const mesh = renderer.createMesh(geo, mat);
+    const createMesh = (geoType) => {
+        const geo = renderer.createGeometry(geoType);
+        const mat = renderer.createMaterial(tinygpu.material.UVMaterial);
+        const mesh = renderer.createMesh(geo, mat);
+        return mesh;    
+    }
 
-    scene.add(mesh);
+    const parent = new tinygpu.Transform();
+
+    const radius = 3;
+    const third = Math.PI * 2 / 3;
+
+    const cube = createMesh(tinygpu.geometry.CubeGeometry);
+    cube.setPosition(Math.cos(third) * radius, 0, Math.sin(third) * radius);
+    parent.add(cube);
+
+    const sphere = createMesh(tinygpu.geometry.SphereGeometry);
+    sphere.setPosition(Math.cos(third * 2) * radius, 0, Math.sin(third * 2) * radius);
+    parent.add(sphere);
+
+    const tet = createMesh(tinygpu.geometry.TetrahedronGeometry);
+    tet.setPosition(Math.cos(third * 3) * radius, 0, Math.sin(third * 3) * radius);
+    parent.add(tet);
+
+    scene.add(parent);
 
     const animate = () => {
         const now = performance.now() / 1000;
-        mesh.setRotation(0, now, now * 0.7);
+        parent.setRotation(0, now, now * 0.7);
         renderer.render(scene, camera);
         requestAnimationFrame(animate);
     };
