@@ -342,7 +342,7 @@ export class Renderer {
   }
 
   createScene(): Scene {
-    return new Scene(this.device);
+    return new Scene(this);
   }
 
   createPerspectiveCamera(options?: PerspectiveCameraProps): PerspectiveCamera {

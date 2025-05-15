@@ -2,15 +2,21 @@ import { Transform } from "./transform";
 import { Camera } from "./camera/camera";
 import { mat4, vec2, Vec2, vec3 } from "wgpu-matrix";
 import { UniformManager } from "./uniform-manager";
+import { Light } from "./lights/light";
+import { LightManager } from "./lights/light-manager";
+import { Renderer } from "./renderer";
 
 export class Scene extends Transform {
     private _uniformManager: UniformManager;
+    private _lightManager: LightManager;
 
-    constructor(device: GPUDevice) {
+    constructor(renderer: Renderer) {
         super();
 
+        this._lightManager = new LightManager(renderer);
+
         this._uniformManager = new UniformManager(
-            device,
+            renderer.device,
             {
                 uniforms: [
                     { name: "projection matrix", value: mat4.create() },
@@ -39,5 +45,23 @@ export class Scene extends Transform {
 
     get bindGroup() {
         return this._uniformManager.bindGroup;
+    }
+
+    get lights(): Light[] {
+        const ret = [];
+        this.traverse((x) => {
+            if (x instanceof Light) {
+                ret.push(x);
+            }
+        })
+        return ret;
+    }
+
+    override add(child: Transform) {
+        super.add(child);
+
+        if (child instanceof Light) {
+            this._lightManager.addLight(child);
+        }
     }
 }
