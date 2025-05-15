@@ -8,10 +8,12 @@ struct SceneUniforms {
   camera_position: vec3<f32>,
   resolution: vec2<f32>,
   time: f32,
+  numLights: u32,
 }
 
 struct ModelUniforms {
   model: mat4x4<f32>,
+  normalMatrix: mat3x3<f32>,
 }
 
 struct VSIn {
