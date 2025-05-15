@@ -27,12 +27,14 @@ export class Mesh extends Transform {
     this.geometry = geo;
     this._instances = instances;
 
+    this._normalMatrix = mat3.identity();
+
     this.updateNormalMatrix();
 
     this._uniformManager = new UniformManager(device, {
       uniforms: [
         { name: "model", value: this.worldMatrix },
-        { name: "normal", value: this._normalMatrix },
+        { name: "normalMatrix", value: this._normalMatrix },
       ],
       buffers: buffers || [],
       label: "Mesh",
@@ -54,7 +56,7 @@ export class Mesh extends Transform {
     });
 
     this._uniformManager.updateUniform({
-      name: "normal",
+      name: "normalMatrix",
       value: this._normalMatrix,
     });
 
@@ -62,7 +64,7 @@ export class Mesh extends Transform {
   }
 
   updateNormalMatrix() {
-    this._normalMatrix = mat3.fromMat4(this.worldMatrix);
+    mat3.fromMat4(this.worldMatrix, this._normalMatrix);
     mat3.invert(this._normalMatrix, this._normalMatrix);
     mat3.transpose(this._normalMatrix, this._normalMatrix);
   }
