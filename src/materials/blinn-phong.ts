@@ -30,6 +30,8 @@ export class BlinnPhongMaterial extends Material {
       options.specularColor || vec3.fromValues(1.0, 1.0, 1.0); // Default white specular
     const shininess = options.shininess || 32.0;
 
+    // console.log("B-P", options);
+
     const materialUniformItems: UniformItem[] = [
       { name: "shininess", value: shininess, type: "f32" },
       { name: "ambient_color", value: ambientColor },

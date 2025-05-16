@@ -49,7 +49,7 @@ export class Light extends Transform {
         this.attenuation = attenuation;
         this.radius = radius;
 
-        console.log("Attenuation", this.attenuation);
+        // console.log("Attenuation", this.attenuation);
     }
 
     public encode(): UniformItem {

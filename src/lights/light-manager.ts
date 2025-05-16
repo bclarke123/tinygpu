@@ -88,7 +88,7 @@ export class LightManager {
         this._structLen = packedTemplate.byteLength;
         const totalLen = this._structLen * this._maxLights;
 
-        console.log(`Packing ${this._maxLights} maximum lights into ${totalLen} bytes (${this._structLen} bytes per light)`);
+        // console.log(`Packing ${this._maxLights} maximum lights into ${totalLen} bytes (${this._structLen} bytes per light)`);
 
         this._lightsBuffer = new ArrayBuffer(totalLen);
         this._lightsArr = new Uint8Array(this._lightsBuffer);
