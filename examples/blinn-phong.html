@@ -38,28 +38,51 @@
                     const geo = renderer.createGeometry(geoType);
                     const mat = renderer.createMaterial(
                         tinygpu.material.BlinnPhongMaterial,
-                        { shininess: 1000.0 },
+                        { shininess: 2.0 },
                     );
                     const mesh = renderer.createMesh(geo, mat);
                     return mesh;
                 };
 
+                const createLight = (position, color) => {
+                    const light = new tinygpu.lights.Light(1, color, 1.0, 5.0);
+                    light.setPosition(...position);
+                    scene.add(light);
+
+                    const marker = renderer.createGeometry(tinygpu.geometry.SphereGeometry);
+                    const markerMat = renderer.createMaterial(tinygpu.material.BasicMaterial, {
+                        color
+                    });
+
+                    const mesh = renderer.createMesh(marker, markerMat);
+                    mesh.setScale(0.05, 0.05, 0.05);
+                    mesh.setPosition(...position);
+                    scene.add(mesh);
+                }
+
+                const third = Math.PI * 2 / 3;
+                const radius = 2;
+
+                const parent = new tinygpu.Transform();
+                scene.add(parent);
+
                 const cube = createMesh(tinygpu.geometry.CubeGeometry);
-                scene.add(cube);
+                cube.setPosition(Math.cos(third) * radius, 0, Math.sin(third) * radius);
+                parent.add(cube);
 
-                const light = new tinygpu.lights.Light(1, new tinygpu.Color(0.0, 0.2, 1.0), 3.0);
-                light.setPosition(1, 1, 1);
-                scene.add(light);
+                const tet = createMesh(tinygpu.geometry.TetrahedronGeometry);
+                tet.setPosition(Math.cos(third * 2) * radius, 0, Math.sin(third * 2) * radius);
+                parent.add(tet);
 
-                const light2 = new tinygpu.lights.Light(1, new tinygpu.Color(0.8, 0.2, 0.4), 3.0);
-                light2.setPosition(-1, 1, 1);
-                scene.add(light2);
+                const sphere = createMesh(tinygpu.geometry.SphereGeometry);
+                sphere.setPosition(Math.cos(third * 3) * radius, 0, Math.sin(third * 3) * radius);
+                parent.add(sphere);
 
-                const light3 = new tinygpu.lights.Light(1, new tinygpu.Color(0.2, 0.8, 0.4), 3.0);
-                light3.setPosition(0, -2, 0);
-                scene.add(light3);
+                createLight([ 3, 0, 3 ], new tinygpu.Color(0.0, 0.2, 1.0));
+                createLight([ -3, 0, 3 ], new tinygpu.Color(0.8, 0.2, 0.4));
+                createLight([0, -3, 0], new tinygpu.Color(0.2, 0.8, 0.4));
 
-                const ambient = new tinygpu.lights.Light(0, new tinygpu.Color(1.0, 0.0, 1.0), 0.3);
+                const ambient = new tinygpu.lights.Light(0, new tinygpu.Color(1.0, 1.0, 1.0), 0.3);
                 scene.add(ambient);
 
                 const animate = () => {
@@ -69,7 +92,7 @@
                     // camera.setPosition(Math.cos(now * 0.7) * cr, 0, Math.sin(now * 0.7) * cr);
                     // camera.setTarget([0, 0, 0]);
 
-                    cube.setRotation(0, now * 0.5, now * 0.2);
+                    parent.setRotation(0, now * 0.5, now * 0.2);
                     renderer.render(scene, camera);
                     requestAnimationFrame(animate);
                 };
