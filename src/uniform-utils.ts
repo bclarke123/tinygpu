@@ -32,18 +32,17 @@ export interface UniformItem {
   members?: UniformLayoutMember[];
 }
 
-// --- std140 Layout Information ---
+// --- Layout Information ---
 
 interface Std140LayoutInfo {
   align: number;
-  size: number; // Actual data size for base types; total padded size for structs.
-  advanceAmount: number;
+  size: number; // Actual data size for base types; calculated "tight" size for structs under new rules.
+  advanceAmount: number; // Under new rules, this will mirror 'size'.
   paddedStride?: number; // For matrix columns.
   isStruct?: boolean;
   membersLayout?: { [name: string]: MemberLayoutInfo };
   typeName?: string; // Explicit name of the base type or struct type (e.g., "f32", "vec3", "MyStruct")
-  // Add expected array length for vector and matrix types
-  expectedLength?: number;
+  expectedLength?: number; // Add expected array length for vector and matrix types
 }
 
 interface MemberLayoutInfo extends Std140LayoutInfo {
@@ -65,7 +64,7 @@ const BASE_TYPE_LAYOUT_INFO: Record<string, Std140LayoutInfo> = {
     typeName: "vec3",
     align: 16,
     size: 12,
-    advanceAmount: 16,
+    advanceAmount: 16, // Note: This specific advanceAmount isn't directly used by the new packing logic for offset progression but kept for potential std140 reference.
     expectedLength: 3,
   },
   vec4: {
@@ -75,27 +74,27 @@ const BASE_TYPE_LAYOUT_INFO: Record<string, Std140LayoutInfo> = {
     advanceAmount: 16,
     expectedLength: 4,
   },
-  color: {
+  color: { // Treated like vec4
     typeName: "color",
     align: 16,
     size: 16,
     advanceAmount: 16,
     expectedLength: 4,
-  }, // Treated like vec4
-  mat3: {
-    typeName: "mat3",
-    align: 16,
-    size: 36,
-    advanceAmount: 48,
-    paddedStride: 16,
-    expectedLength: 12, // 3x4 = 12 (3 columns, each column is a vec4 with 4 elements)
   },
-  mat4: {
+  mat3: { // Columns are vec3s padded to vec4s
+    typeName: "mat3",
+    align: 16, // align of vec4
+    size: 36, // 3 columns * 3 floats * 4 bytes/float
+    advanceAmount: 48, // 3 columns * 16 bytes/padded column. Not used for new packing offset.
+    paddedStride: 16, // Stride of each column (bytes)
+    expectedLength: 12, // 3x4
+  },
+  mat4: { // Columns are vec4s
     typeName: "mat4",
     align: 16,
-    size: 64,
-    advanceAmount: 64,
-    paddedStride: 16,
+    size: 64, // 4 columns * 4 floats * 4 bytes/float
+    advanceAmount: 64, // Not used for new packing offset.
+    paddedStride: 16, // Stride of each column (bytes)
     expectedLength: 16, // 4x4
   },
 };
@@ -145,11 +144,10 @@ function getDataTypeFromValue(value: UniformValue, itemName: string): string {
         return "mat4";
       default:
         throw new Error(
-          `Unsupported Float32Array length for item "${itemName}" for type inference: ${value.length}. Expected 2, 3, 4, 9, or 16.`,
+          `Unsupported Float32Array length for item "${itemName}" for type inference: ${value.length}. Expected 2, 3, 4, 9, 12, or 16.`,
         );
     }
   }
-  // This function should not be called for structs, as their type must be explicit or defined with 'members'.
   throw new Error(
     `Cannot infer base type for item "${itemName}". Value type: ${typeof value}. If it's a struct, its 'type' (and 'members' if new) must be defined.`,
   );
@@ -158,10 +156,9 @@ function getDataTypeFromValue(value: UniformValue, itemName: string): string {
 function getLayoutInfo(item: UniformItem): Std140LayoutInfo {
   let typeNameToUse = item.type;
   const members = item.members;
-  const itemName = item.name; // For error messages
+  const itemName = item.name;
 
   if (members) {
-    // It's a struct definition or a struct type with members provided
     if (!typeNameToUse) {
       throw new Error(
         `Struct item "${itemName}" must have a 'type' property defining its name when 'members' are provided.`,
@@ -187,11 +184,9 @@ function getLayoutInfo(item: UniformItem): Std140LayoutInfo {
     }
 
     for (const memberDef of members) {
-      // memberDef is UniformLayoutMember
       const memberName = memberDef.name;
       const memberVal = structValueObject[memberName];
       if (memberVal === undefined && !memberDef.type && !memberDef.members) {
-        // Only error if value is needed for inference
         throw new Error(
           `Value for struct member "${memberName}" of struct "${typeNameToUse}" not provided, and type cannot be inferred.`,
         );
@@ -199,7 +194,6 @@ function getLayoutInfo(item: UniformItem): Std140LayoutInfo {
 
       let memberTypeString = memberDef.type;
       if (!memberTypeString && !memberDef.members) {
-        // Infer if base type and no explicit type
         if (memberVal === undefined)
           throw new Error(
             `Value for struct member "${memberName}" needed for type inference.`,
@@ -209,7 +203,6 @@ function getLayoutInfo(item: UniformItem): Std140LayoutInfo {
           `${itemName}.${memberName}`,
         );
       } else if (!memberTypeString && memberDef.members) {
-        // Inline nested struct definition without a type name for itself
         throw new Error(
           `Inline nested struct member "${memberName}" within "${typeNameToUse}" must have its own 'type' (name) defined.`,
         );
@@ -217,9 +210,9 @@ function getLayoutInfo(item: UniformItem): Std140LayoutInfo {
 
       const memberItemForLayout: UniformItem = {
         name: memberName,
-        value: memberVal, // Pass the actual value
-        type: memberTypeString, // Use explicit or inferred type
-        members: memberDef.members, // Pass nested struct definition if provided
+        value: memberVal,
+        type: memberTypeString,
+        members: memberDef.members,
       };
 
       const memberLayout = getLayoutInfo(memberItemForLayout);
@@ -234,18 +227,18 @@ function getLayoutInfo(item: UniformItem): Std140LayoutInfo {
         ...memberLayout,
         relativeOffset: currentStructOffset,
       };
-      currentStructOffset += memberLayout.advanceAmount;
+      // Advance by member's actual data size
+      currentStructOffset += memberLayout.size;
     }
 
     const structAlign = structMaxMemberAlign;
-    const finalStructPadding =
-      (structAlign - (currentStructOffset % structAlign)) % structAlign;
-    const structTotalSize = currentStructOffset + finalStructPadding;
 
+    // Struct's size is its "tight" size based on new member packing.
+    // AdvanceAmount also reflects this new tight size.
     const structLayout: Std140LayoutInfo = {
       align: structAlign,
-      size: structTotalSize,
-      advanceAmount: structTotalSize,
+      size: currentStructOffset, // currentStructOffset is the tight size
+      advanceAmount: currentStructOffset, // Reflects the tight size
       isStruct: true,
       membersLayout: memberLayouts,
       typeName: typeNameToUse,
@@ -253,19 +246,16 @@ function getLayoutInfo(item: UniformItem): Std140LayoutInfo {
     computedStructLayoutCache[typeNameToUse] = structLayout;
     return structLayout;
   } else if (typeNameToUse) {
-    // Type is explicitly provided, not a new struct definition with members
     if (BASE_TYPE_LAYOUT_INFO[typeNameToUse]) {
       return BASE_TYPE_LAYOUT_INFO[typeNameToUse];
     }
     if (computedStructLayoutCache[typeNameToUse]) {
-      // It's a pre-defined struct type
       return computedStructLayoutCache[typeNameToUse];
     }
     throw new Error(
       `Unknown explicit type "${typeNameToUse}" for item "${itemName}" and not a defined struct in cache.`,
     );
   } else {
-    // No type, no members - infer base type from value
     const inferredType = getDataTypeFromValue(item.value, itemName);
     if (BASE_TYPE_LAYOUT_INFO[inferredType]) {
       return BASE_TYPE_LAYOUT_INFO[inferredType];
@@ -303,7 +293,8 @@ export function packUniforms(
       relativeOffset: currentBufferOffset,
       itemData: item,
     });
-    currentBufferOffset += layoutInfo.advanceAmount;
+    // MODIFICATION POINT 3: Advance by the item's actual data size
+    currentBufferOffset += layoutInfo.size;
   }
 
   const finalBufferPadding =
@@ -332,7 +323,7 @@ export function packUniforms(
 
   function writeDataItem(
     itemValue: UniformValue,
-    itemLayout: Std140LayoutInfo,
+    itemLayout: Std140LayoutInfo, // This is actually MemberLayoutInfo for struct members
     currentAbsoluteOffset: number,
   ) {
     if (itemLayout.isStruct) {
@@ -356,7 +347,7 @@ export function packUniforms(
         }
         writeDataItem(
           memberValue,
-          memberLayoutInfo,
+          memberLayoutInfo, // This is already a MemberLayoutInfo
           currentAbsoluteOffset + memberLayoutInfo.relativeOffset,
         );
       }
@@ -400,7 +391,7 @@ export function packUniforms(
               `Type mismatch: Expected Color instance, but got ${typeof itemValue}`,
             );
           }
-          const colorData = (itemValue as Color).uniformValue();
+          const colorData = (itemValue as Color).uniformValue(); // Assumes Color.uniformValue() returns Float32Array(4)
           bufferAsFloats.set(colorData, currentAbsoluteOffset / 4);
           break;
         case "vec2":
@@ -411,22 +402,15 @@ export function packUniforms(
               `Type mismatch: Expected Float32Array for ${itemLayout.typeName}, but got ${typeof itemValue}`,
             );
           }
-
-          // Check if we have at least the minimum required elements
           if (!hasMinimumRequiredLength(itemValue, itemLayout.expectedLength)) {
             throw new Error(
               `Not enough data for ${itemLayout.typeName}: Expected at least ${itemLayout.expectedLength} elements, but got ${itemValue.length}`,
             );
           }
-
-          // Only write the correct number of elements, ignoring any excess
-          const srcArray = itemValue as Float32Array;
-          const elementsToWrite = itemLayout.expectedLength || srcArray.length;
-
-          // Create a correctly sized slice to write
-          const validSlice = srcArray.subarray(0, elementsToWrite);
-
-          bufferAsFloats.set(validSlice, currentAbsoluteOffset / 4);
+          const srcArrayV = itemValue as Float32Array;
+          const elementsToWriteV = itemLayout.expectedLength || srcArrayV.length;
+          const validSliceV = srcArrayV.subarray(0, elementsToWriteV);
+          bufferAsFloats.set(validSliceV, currentAbsoluteOffset / 4);
           break;
         case "mat4":
           if (!(itemValue instanceof Float32Array)) {
@@ -434,15 +418,11 @@ export function packUniforms(
               `Type mismatch: Expected Float32Array for mat4, but got ${typeof itemValue}`,
             );
           }
-
-          // Check if we have enough data for a 4x4 matrix
           if (itemValue.length < 16) {
             throw new Error(
               `Not enough data for mat4: Expected at least 16 elements, but got ${itemValue.length}`,
             );
           }
-
-          // Use only the first 16 elements, ignoring excess
           bufferAsFloats.set(
             itemValue.subarray(0, 16),
             currentAbsoluteOffset / 4,
@@ -454,36 +434,38 @@ export function packUniforms(
               `Type mismatch: Expected Float32Array for mat3, but got ${typeof itemValue}`,
             );
           }
-
-          // Check if array is large enough - we need at least 9 elements (3x3)
-          if (itemValue.length < 9) {
+          if (itemValue.length < 9) { // Needs at least 3x3 data
             throw new Error(
               `Not enough data for mat3: Expected at least 9 elements, but got ${itemValue.length}`,
             );
           }
 
           const mat3data = itemValue as Float32Array;
-          const columnStrideFloats = itemLayout.paddedStride! / 4; // stride in floats (4 floats per column)
+          const columnStrideFloats = itemLayout.paddedStride! / 4;
 
-          // Handle the two possible input formats:
-          if (mat3data.length === 12) {
-            // Format 1: Already in 3x4 layout (pre-padded format with 4 floats per column)
-            // Just copy the data directly - 12 floating point values (3 columns of vec4)
-            bufferAsFloats.set(mat3data, currentAbsoluteOffset / 4);
-          } else {
-            // Format 2: Standard 3x3 matrix with 9 values (no padding)
-            // Need to copy each column with the right stride (padding the 4th component)
-            for (let i = 0; i < 3; ++i) {
-              const sourceOffset = i * 3; // Each column is 3 floats in the source
-              const destOffsetFloats =
-                currentAbsoluteOffset / 4 + i * columnStrideFloats;
-
-              // Copy the column (3 values)
+          if (mat3data.length === 12 && itemLayout.size === 36 && itemLayout.paddedStride === 16) {
+            // If input is 12 floats, assume it's pre-padded 3xvec4.
+            // This can be ambiguous if a mat3 (size 36) was *intended* to be packed tightly from 9 floats.
+            // However, given 'paddedStride' is 16, writing 3 vec4s is how std140 mat3 works internally.
+            // The data written is 3 columns * 3 floats/col = 9 floats = 36 bytes.
+            // This path is complex. The key is 'itemLayout.size' is 36.
+            // We need to write 3 floats per column, respecting columnStrideFloats.
+            for (let col = 0; col < 3; ++col) {
+              const sourceColOffset = col * (mat3data.length === 12 ? 4 : 3); // If source is 12, it's padded. If 9, it's tight.
+              const destColByteOffset = currentAbsoluteOffset + col * itemLayout.paddedStride!;
+              bufferAsFloats.set(
+                mat3data.subarray(sourceColOffset, sourceColOffset + 3), // always copy 3 floats for the column data
+                destColByteOffset / 4,
+              );
+            }
+          } else { // Standard 3x3 matrix with 9 values (or more, but we only use 9)
+            for (let i = 0; i < 3; ++i) { // For each column
+              const sourceOffset = i * 3;
+              const destOffsetFloats = currentAbsoluteOffset / 4 + i * columnStrideFloats;
               bufferAsFloats.set(
                 mat3data.subarray(sourceOffset, sourceOffset + 3),
                 destOffsetFloats,
               );
-              // The 4th float in each column is left as 0 (padding)
             }
           }
           break;
@@ -498,7 +480,7 @@ export function packUniforms(
   for (const itemWithOffset of itemLayoutsWithOffsets) {
     writeDataItem(
       itemWithOffset.itemData.value,
-      itemWithOffset,
+      itemWithOffset, // This is Std140LayoutInfo & { itemData, relativeOffset }
       baseWriteOffset + itemWithOffset.relativeOffset,
     );
   }
@@ -512,19 +494,29 @@ export function uploadUniformBuffer(
   label: string = "Uniform Buffer",
   buffer?: GPUBuffer,
 ): GPUBuffer {
-  buffer ??= device.createBuffer({
+  const newBuffer = buffer ?? device.createBuffer({
     label,
     size: packedUniforms.byteLength,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM,
+    mappedAtCreation: false, // It's generally better practice for performance unless mappedAtCreation is specifically needed
   });
 
+  // Ensure the buffer size is appropriate if an existing buffer is reused
+  if (buffer && buffer.size < packedUniforms.byteLength) {
+    // This case ideally shouldn't happen if buffer is managed correctly,
+    // but it's a good safeguard or might indicate a need to recreate the buffer.
+    // For simplicity here, we'll throw. A more robust solution might recreate.
+    throw new Error(`Existing buffer is too small. Buffer size: ${buffer.size}, Data size: ${packedUniforms.byteLength}`);
+  }
+
+
   device.queue.writeBuffer(
-    buffer,
+    newBuffer, // Use newBuffer which is either the provided buffer or the newly created one
     0,
     packedUniforms,
     0,
     packedUniforms.byteLength,
   );
 
-  return buffer;
+  return newBuffer;
 }
