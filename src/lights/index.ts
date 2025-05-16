@@ -1,2 +1,2 @@
 export { LightManager } from "./light-manager";
-export { Light } from "./light";
+export { Light, LightType, LightOptions } from "./light";
