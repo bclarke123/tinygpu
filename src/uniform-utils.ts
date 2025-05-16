@@ -42,6 +42,8 @@ interface Std140LayoutInfo {
   isStruct?: boolean;
   membersLayout?: { [name: string]: MemberLayoutInfo };
   typeName?: string; // Explicit name of the base type or struct type (e.g., "f32", "vec3", "MyStruct")
+  // Add expected array length for vector and matrix types
+  expectedLength?: number;
 }
 
 interface MemberLayoutInfo extends Std140LayoutInfo {
@@ -52,16 +54,41 @@ const BASE_TYPE_LAYOUT_INFO: Record<string, Std140LayoutInfo> = {
   f32: { typeName: "f32", align: 4, size: 4, advanceAmount: 4 },
   i32: { typeName: "i32", align: 4, size: 4, advanceAmount: 4 },
   u32: { typeName: "u32", align: 4, size: 4, advanceAmount: 4 },
-  vec2: { typeName: "vec2", align: 8, size: 8, advanceAmount: 8 },
-  vec3: { typeName: "vec3", align: 16, size: 12, advanceAmount: 16 },
-  vec4: { typeName: "vec4", align: 16, size: 16, advanceAmount: 16 },
-  color: { typeName: "color", align: 16, size: 16, advanceAmount: 16 }, // Treated like vec4
+  vec2: {
+    typeName: "vec2",
+    align: 8,
+    size: 8,
+    advanceAmount: 8,
+    expectedLength: 2,
+  },
+  vec3: {
+    typeName: "vec3",
+    align: 16,
+    size: 12,
+    advanceAmount: 16,
+    expectedLength: 3,
+  },
+  vec4: {
+    typeName: "vec4",
+    align: 16,
+    size: 16,
+    advanceAmount: 16,
+    expectedLength: 4,
+  },
+  color: {
+    typeName: "color",
+    align: 16,
+    size: 16,
+    advanceAmount: 16,
+    expectedLength: 4,
+  }, // Treated like vec4
   mat3: {
     typeName: "mat3",
     align: 16,
     size: 36,
     advanceAmount: 48,
     paddedStride: 16,
+    expectedLength: 12, // 3x4 = 12 (3 columns, each column is a vec4 with 4 elements)
   },
   mat4: {
     typeName: "mat4",
@@ -69,10 +96,31 @@ const BASE_TYPE_LAYOUT_INFO: Record<string, Std140LayoutInfo> = {
     size: 64,
     advanceAmount: 64,
     paddedStride: 16,
+    expectedLength: 16, // 4x4
   },
 };
 
 const computedStructLayoutCache: Record<string, Std140LayoutInfo> = {};
+
+/**
+ * Checks if array-based uniform values have enough data
+ * @returns true if the value has at least the required number of elements
+ */
+function hasMinimumRequiredLength(
+  value: Float32Array | Color,
+  expectedLength: number | undefined,
+): boolean {
+  if (!expectedLength) return true;
+
+  let actualLength: number;
+  if (value instanceof Color) {
+    actualLength = 4; // Color always has 4 components
+  } else {
+    actualLength = value.length;
+  }
+
+  return actualLength >= expectedLength;
+}
 
 /**
  * Infers the WGSL base data type from a JavaScript value.
@@ -91,13 +139,13 @@ function getDataTypeFromValue(value: UniformValue, itemName: string): string {
       case 4:
         return "vec4";
       case 9:
-      case 12: // ??
+      case 12: // Allow both 3x3 flat array and 3x4 (pre-padded) format
         return "mat3";
       case 16:
         return "mat4";
       default:
         throw new Error(
-          `Unsupported Float32Array length for item "${itemName}" for type inference: ${value.length}`,
+          `Unsupported Float32Array length for item "${itemName}" for type inference: ${value.length}. Expected 2, 3, 4, 9, or 16.`,
         );
     }
   }
@@ -313,17 +361,33 @@ export function packUniforms(
         );
       }
     } else {
-      switch (
-      itemLayout.typeName // Use typeName for direct switch
-      ) {
+      switch (itemLayout.typeName) {
         case "u32":
+          if (typeof itemValue !== "number") {
+            throw new Error(
+              `Type mismatch: Expected number for u32 value, but got ${typeof itemValue}`,
+            );
+          }
           bufferView.setUint32(
             currentAbsoluteOffset,
             itemValue as number,
-            true
+            true,
           );
           break;
+        case "i32":
+          if (typeof itemValue !== "number") {
+            throw new Error(
+              `Type mismatch: Expected number for i32 value, but got ${typeof itemValue}`,
+            );
+          }
+          bufferView.setInt32(currentAbsoluteOffset, itemValue as number, true);
+          break;
         case "f32":
+          if (typeof itemValue !== "number") {
+            throw new Error(
+              `Type mismatch: Expected number for f32 value, but got ${typeof itemValue}`,
+            );
+          }
           bufferView.setFloat32(
             currentAbsoluteOffset,
             itemValue as number,
@@ -331,41 +395,96 @@ export function packUniforms(
           );
           break;
         case "color":
-          bufferAsFloats.set(
-            (itemValue as Color).uniformValue(),
-            currentAbsoluteOffset / 4,
-          );
+          if (!(itemValue instanceof Color)) {
+            throw new Error(
+              `Type mismatch: Expected Color instance, but got ${typeof itemValue}`,
+            );
+          }
+          const colorData = (itemValue as Color).uniformValue();
+          bufferAsFloats.set(colorData, currentAbsoluteOffset / 4);
           break;
         case "vec2":
-        case "vec4":
-          bufferAsFloats.set(
-            itemValue as Float32Array,
-            currentAbsoluteOffset / 4,
-          );
-          break;
         case "vec3":
-          bufferAsFloats.set(
-            itemValue as Float32Array,
-            currentAbsoluteOffset / 4,
-          );
+        case "vec4":
+          if (!(itemValue instanceof Float32Array)) {
+            throw new Error(
+              `Type mismatch: Expected Float32Array for ${itemLayout.typeName}, but got ${typeof itemValue}`,
+            );
+          }
+
+          // Check if we have at least the minimum required elements
+          if (!hasMinimumRequiredLength(itemValue, itemLayout.expectedLength)) {
+            throw new Error(
+              `Not enough data for ${itemLayout.typeName}: Expected at least ${itemLayout.expectedLength} elements, but got ${itemValue.length}`,
+            );
+          }
+
+          // Only write the correct number of elements, ignoring any excess
+          const srcArray = itemValue as Float32Array;
+          const elementsToWrite = itemLayout.expectedLength || srcArray.length;
+
+          // Create a correctly sized slice to write
+          const validSlice = srcArray.subarray(0, elementsToWrite);
+
+          bufferAsFloats.set(validSlice, currentAbsoluteOffset / 4);
           break;
         case "mat4":
+          if (!(itemValue instanceof Float32Array)) {
+            throw new Error(
+              `Type mismatch: Expected Float32Array for mat4, but got ${typeof itemValue}`,
+            );
+          }
+
+          // Check if we have enough data for a 4x4 matrix
+          if (itemValue.length < 16) {
+            throw new Error(
+              `Not enough data for mat4: Expected at least 16 elements, but got ${itemValue.length}`,
+            );
+          }
+
+          // Use only the first 16 elements, ignoring excess
           bufferAsFloats.set(
-            itemValue as Float32Array,
+            itemValue.subarray(0, 16),
             currentAbsoluteOffset / 4,
           );
           break;
         case "mat3":
-          const mat3data = itemValue as Float32Array;
-          const columnStrideFloats = itemLayout.paddedStride! / 4;
-          for (let i = 0; i < 3; ++i) {
-            const sourceOffset = i * 3;
-            const destOffsetFloats =
-              currentAbsoluteOffset / 4 + i * columnStrideFloats;
-            bufferAsFloats.set(
-              mat3data.subarray(sourceOffset, sourceOffset + 3),
-              destOffsetFloats,
+          if (!(itemValue instanceof Float32Array)) {
+            throw new Error(
+              `Type mismatch: Expected Float32Array for mat3, but got ${typeof itemValue}`,
             );
+          }
+
+          // Check if array is large enough - we need at least 9 elements (3x3)
+          if (itemValue.length < 9) {
+            throw new Error(
+              `Not enough data for mat3: Expected at least 9 elements, but got ${itemValue.length}`,
+            );
+          }
+
+          const mat3data = itemValue as Float32Array;
+          const columnStrideFloats = itemLayout.paddedStride! / 4; // stride in floats (4 floats per column)
+
+          // Handle the two possible input formats:
+          if (mat3data.length === 12) {
+            // Format 1: Already in 3x4 layout (pre-padded format with 4 floats per column)
+            // Just copy the data directly - 12 floating point values (3 columns of vec4)
+            bufferAsFloats.set(mat3data, currentAbsoluteOffset / 4);
+          } else {
+            // Format 2: Standard 3x3 matrix with 9 values (no padding)
+            // Need to copy each column with the right stride (padding the 4th component)
+            for (let i = 0; i < 3; ++i) {
+              const sourceOffset = i * 3; // Each column is 3 floats in the source
+              const destOffsetFloats =
+                currentAbsoluteOffset / 4 + i * columnStrideFloats;
+
+              // Copy the column (3 values)
+              bufferAsFloats.set(
+                mat3data.subarray(sourceOffset, sourceOffset + 3),
+                destOffsetFloats,
+              );
+              // The 4th float in each column is left as 0 (padding)
+            }
           }
           break;
         default:
@@ -409,67 +528,3 @@ export function uploadUniformBuffer(
 
   return buffer;
 }
-
-// --- Example Usage ---
-/*
-const pointLightMembers: UniformLayoutMember[] = [
-    { name: "position", value: new Float32Array([0,0,0]) }, // Type 'vec3' will be inferred
-    { name: "color", value: new Float32Array([0,0,0]) },    // Type 'vec3' will be inferred
-    { name: "intensity", value: 0 }, // Type 'f32' will be inferred
-    { name: "radius", value: 0 },    // Type 'f32' will be inferred
-    // If a member was another struct, e.g., 'attenuation', its 'type' (struct name) would be required:
-    // { name: "attenuation", type: "AttenuationParams", members: [...] }
-];
-
-const sceneUniformItems: UniformItem[] = [
-    { // Struct defined inline
-        name: "light1",
-        type: "PointLightCustom", // Name for this struct type (used for caching its layout)
-        members: [ // Define members; their base types can now be inferred from 'value' for light1
-            { name: "position" }, // Type will be inferred from light1.value.position
-            { name: "color" },    // Type will be inferred from light1.value.color
-            { name: "intensity" },// Type will be inferred from light1.value.intensity
-            { name: "radius" },   // Type will be inferred from light1.value.radius
-        ],
-        value: { // Provide values for all members
-            position: new Float32Array([10, 20, 30]),
-            color: new Float32Array([1.0, 0.8, 0.5]),
-            intensity: 1.5,
-            radius: 100.0,
-        }
-    },
-    { // Base type, type is inferred
-        name: "ambientColor",
-        value: new Float32Array([0.1, 0.1, 0.15, 1.0]) // Inferred as vec4
-    },
-    { // Base type, type is inferred
-        name: "time",
-        value: 0.0 // Inferred as f32
-    },
-    { // Using a pre-defined (now cached) struct type
-        name: "light2",
-        type: "PointLightCustom", // Refers to the layout cached from "light1"
-        // No 'members' needed here as "PointLightCustom" layout is already known/cached.
-        value: { // Values must match the structure of PointLightCustom
-            position: new Float32Array([-5, 5, 5]),
-            color: new Float32Array([0.5, 0.8, 1.0]),
-            intensity: 0.8,
-            radius: 50.0,
-        }
-    }
-];
-
-// To pack these:
-// const packedBuffer = packUniforms(sceneUniformItems);
-// console.log("Packed Buffer Byte Length:", packedBuffer.byteLength); // Should be 80 (for light1, ambient, time) + 48 (for light2) = 128
-
-// To verify (requires a way to read back from ArrayBuffer according to layout):
-// const floatView = new Float32Array(packedBuffer);
-// console.log("Light1 Position X:", floatView[0]); // 10
-// console.log("Light1 Color R:", floatView[16/4 + 0]); // 1.0
-// console.log("Light1 Intensity:", floatView[28/4]); // 1.5
-// console.log("Light1 Radius:", floatView[32/4]); // 100.0
-// console.log("Ambient R:", floatView[48/4]); // 0.1
-// console.log("Time:", floatView[64/4]); // 0.0
-// console.log("Light2 Position X:", floatView[80/4 + 0]); // -5
-*/
