@@ -1,6 +1,6 @@
 {
   "name": "@g3rmania/tinygpu",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A minimal framework for WebGPU in the browser",
   "keywords": [
     "webgpu",
