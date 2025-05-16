@@ -38,7 +38,7 @@
                     const geo = renderer.createGeometry(geoType);
                     const mat = renderer.createMaterial(
                         tinygpu.material.BlinnPhongMaterial,
-                        { shininess: 0.6 },
+                        { shininess: 10.0 },
                     );
                     const mesh = renderer.createMesh(geo, mat);
                     return mesh;
@@ -47,11 +47,19 @@
                 const cube = createMesh(tinygpu.geometry.CubeGeometry);
                 scene.add(cube);
 
-                const light = new tinygpu.lights.Light(1, new tinygpu.Color(0.7, 0.7, 0.8), 0.8);
-                light.setPosition(4, 3, 5);
+                const light = new tinygpu.lights.Light(1, new tinygpu.Color(0.0, 0.2, 1.0), 3.0);
+                light.setPosition(1, 1, 1);
                 scene.add(light);
 
-                const ambient = new tinygpu.lights.Light(0, new tinygpu.Color(1.0, 0.0, 1.0));
+                const light2 = new tinygpu.lights.Light(1, new tinygpu.Color(0.8, 0.2, 0.4), 3.0);
+                light2.setPosition(-1, 1, 1);
+                scene.add(light2);
+
+                const light3 = new tinygpu.lights.Light(1, new tinygpu.Color(0.2, 0.8, 0.4), 3.0);
+                light3.setPosition(0, -2, 0);
+                scene.add(light3);
+
+                const ambient = new tinygpu.lights.Light(0, new tinygpu.Color(1.0, 0.0, 1.0), 0.3);
                 scene.add(ambient);
 
                 const animate = () => {
@@ -61,7 +69,7 @@
                     // camera.setPosition(Math.cos(now * 0.7) * cr, 0, Math.sin(now * 0.7) * cr);
                     // camera.setTarget([0, 0, 0]);
 
-                    cube.setRotation(0, now, now * 0.7);
+                    cube.setRotation(0, now * 0.5, now * 0.2);
                     renderer.render(scene, camera);
                     requestAnimationFrame(animate);
                 };
