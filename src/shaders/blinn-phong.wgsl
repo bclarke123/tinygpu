@@ -103,8 +103,8 @@ fn vs_main(in: VSIn) -> VSOut {
 
 fn safe_normalize(v: vec3<f32>) -> vec3<f32> {
     let len = length(v);
-    if (len < 0.00001) { // Check against a small epsilon
-        return vec3<f32>(0.0, 0.0, 0.0); // Or a default direction like (0,0,1)
+    if (len < 0.00001) {
+        return vec3<f32>(0.0, 0.0, 1.0);
     }
     return v / len;
 }
