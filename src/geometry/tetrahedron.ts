@@ -43,14 +43,11 @@ function _createTetrahedronGeometryData(radius: number = 0.5): TetrahedronGeomet
     const p2: [number, number, number] = [-c, c, -c];
     const p3: [number, number, number] = [-c, -c, c];
 
-    // Define vertices for each face (pos, uv) and then calculate normals
-    // Each face is a triangle, 3 vertices per face.
-    // Total 4 faces * 3 vertices/face = 12 vertices in the buffer.
     const faces = [
-        { verts: [p0, p2, p1], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] }, // Front-ish when looking from +Z towards origin, p0 top
-        { verts: [p0, p1, p3], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] }, // Right-ish
-        { verts: [p0, p3, p2], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] }, // Left-ish
-        { verts: [p1, p2, p3], uvs: [[0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number], [0.5, 1.0] as [number, number]] }, // Bottom face
+        { verts: [p0, p2, p1], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] },
+        { verts: [p0, p1, p3], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] },
+        { verts: [p0, p3, p2], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] },
+        { verts: [p1, p2, p3], uvs: [[0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number], [0.5, 1.0] as [number, number]] },
     ];
 
     const vertexData: number[] = [];
@@ -58,27 +55,30 @@ function _createTetrahedronGeometryData(radius: number = 0.5): TetrahedronGeomet
     let vertexCounter = 0;
 
     for (const face of faces) {
-        const [vA, vB, vC] = face.verts;
+        const [vA, vB, vC] = face.verts; // e.g., for face 0: vA=p0, vB=p2, vC=p1
         const [uvA, uvB, uvC] = face.uvs;
 
-        const edge1 = subtract(vB, vA);
-        const edge2 = subtract(vC, vA);
-        const normal = normalize(crossProduct(edge1, edge2));
+        const edge1 = subtract(vB, vA); // For face 0: p2-p0
+        const edge2 = subtract(vC, vA); // For face 0: p1-p0
 
-        // Add vertex A for this face
+        // Normal for the triangle (vA, vC, vB) should be cross(vC-vA, vB-vA)
+        // This is cross(edge2, edge1)
+        const normal = normalize(crossProduct(edge2, edge1));
+
+        // Vertices are pushed in order vA, vB, vC as defined in face.verts
         vertexData.push(...vA, ...uvA, ...normal);
-        // Add vertex B for this face
-        vertexData.push(...vB, ...uvB, ...normal);
-        // Add vertex C for this face
-        vertexData.push(...vC, ...uvC, ...normal);
+        vertexData.push(...vB, ...uvB, ...normal); // Note: normal is for face (vA,vC,vB)
+        vertexData.push(...vC, ...uvC, ...normal); // but is applied to vA,vB,vC here.
+        // This is okay for flat shading where each vertex can have the face normal.
 
-        indexData.push(vertexCounter, vertexCounter + 1, vertexCounter + 2);
+        // Winding order for CCW (vA, vC, vB)
+        indexData.push(vertexCounter, vertexCounter + 2, vertexCounter + 1);
         vertexCounter += 3;
     }
 
     const vertices = new Float32Array(vertexData);
     const indices = new Uint16Array(indexData);
-    const vertexCount = vertexCounter; // Total vertices written to the buffer
+    const vertexCount = vertexCounter;
     const indexCount = indices.length;
 
     return {
@@ -125,27 +125,23 @@ export class TetrahedronGeometry extends Geometry {
     }
 
     get bufferLayout(): GPUVertexBufferLayout[] {
-        // This layout describes the single interleaved vertex buffer.
         return [
             {
                 arrayStride: this._arrayStride,
                 attributes: [
                     {
-                        // Position
-                        shaderLocation: 0, // Corresponds to @location(0) in WGSL
+                        shaderLocation: 0, // Position
                         offset: 0,
                         format: "float32x3",
                     },
                     {
-                        // UV
-                        shaderLocation: 1, // Corresponds to @location(1) in WGSL
-                        offset: 3 * 4, // Offset after 3 position floats
+                        shaderLocation: 1, // UV
+                        offset: 3 * 4,
                         format: "float32x2",
                     },
                     {
-                        // Normal
-                        shaderLocation: 2, // Corresponds to @location(2) in WGSL
-                        offset: (3 + 2) * 4, // Offset after 3 position floats + 2 UV floats
+                        shaderLocation: 2, // Normal
+                        offset: (3 + 2) * 4,
                         format: "float32x3",
                     },
                 ],
