@@ -174,7 +174,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
             let NdotL = max(dot(N, L), 0.0);
 
             total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * base_diffuse_albedo * NdotL);
-            
+
             // return vec4(total_outgoing_radiance, 1.0);
 
             // Specular Reflection (Blinn-Phong)
@@ -188,8 +188,52 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
                 total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color * specular_factor);
             }
         }
+        // --- DIRECTIONAL LIGHT TYPE ---
+        else if (L_info.lightType == 2u) { // LightType.Directional
+            // For directional lights, the 'direction' is derived from the light's orientation matrix.
+            // A common convention: light shines along its local -Z axis.
+            // So, the world direction of the light is the 3rd column of the rotation part of L_info.matrix, negated.
+            // Or, if your convention is light shines along +Z, it's the 3rd column directly.
+            // Let's assume the light's "forward" is its local -Z axis.
+            // The world-space -Z axis of the light's transform is:
+            //   -normalize(vec3<f32>(L_info.matrix[0][2], L_info.matrix[1][2], L_info.matrix[2][2])) if matrix is column-major
+            //   -normalize(vec3<f32>(L_info.matrix[2][0], L_info.matrix[2][1], L_info.matrix[2][2])) if matrix is row-major
+            // wgpu-matrix `mat4` is column-major by default. So, m[col][row].
+            // L_info.matrix[2] is the Z-axis column.
+            // The direction *the light is shining* would be -L_info.matrix[2].xyz if -Z is forward.
+            // The vector L for lighting (from surface to light) is the *opposite* of the light's shining direction.
+            // So, if light shines along -Z_world (e.g. L_info.matrix[2].xyz = (0,0,-1) for a light shining down world -Z):
+            // then L (to light) is normalize(L_info.matrix[2].xyz).
+            //
+            // Let's define: `light_direction_to_surface` as the normalized direction the light rays travel.
+            // If your light object is oriented such that its local -Z axis is the direction it shines:
+            let light_direction_to_surface = safe_normalize(vec3<f32>(-L_info.matrix[2][0], -L_info.matrix[2][1], -L_info.matrix[2][2]));
+            // If your light object is oriented such that its local +Z axis is the direction it shines:
+            // let light_direction_to_surface = safe_normalize(vec3<f32>(L_info.matrix[2][0], L_info.matrix[2][1], L_info.matrix[2][2]));
 
-        // TODO: Add 'else if' blocks for Directional (type 2) and Spot (type 3) lights
+            // The light vector 'L' used in lighting equations is from the surface point *towards* the light source.
+            // This is the negative of the direction the light is shining.
+            let L = safe_normalize(-light_direction_to_surface);
+
+            // No attenuation for directional lights.
+            let effective_light_color = light_color_final; // Intensity is already in light_color_base
+
+            // Diffuse
+            let NdotL = max(dot(N, L), 0.0);
+            total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * base_diffuse_albedo * NdotL);
+
+            // Specular
+            if (NdotL > 0.0) { // Only calculate specular if light hits the surface
+                let H_vec = L + V;
+                if (length(H_vec) > 0.00001) {
+                    let H = safe_normalize(H_vec);
+                    let NdotH = max(dot(N, H), 0.0);
+                    let specular_factor = pow(NdotH, material_params.shininess);
+                    total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color * specular_factor);
+                }
+            }
+        }
+        // TODO: Add 'else if' block for Spot (type 3) lights
     }
 
     // Combine lighting components
