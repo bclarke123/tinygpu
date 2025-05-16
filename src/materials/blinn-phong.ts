@@ -31,10 +31,10 @@ export class BlinnPhongMaterial extends Material {
     const shininess = options.shininess || 32.0;
 
     const materialUniformItems: UniformItem[] = [
+      { name: "shininess", value: shininess, type: "f32" },
       { name: "ambient_color", value: ambientColor },
       { name: "diffuse_color", value: diffuseColor },
       { name: "specular_color", value: specularColor },
-      { name: "shininess", value: shininess },
     ];
 
     // Create a UniformManager instance specifically for this material's uniforms

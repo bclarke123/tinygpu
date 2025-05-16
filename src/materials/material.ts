@@ -25,5 +25,13 @@ export abstract class Material {
 
   update() {
     this._uniformManager?.update();
+
+    // const dump = new Uint8Array(this._uniformManager._uniformArr).reduce((a, x) => {
+    //   a.push(x.toString(16).padStart(2, "0"));
+    //   return a;
+    // }, []).join(":");
+
+    // console.log("Encoded:", JSON.stringify(this._uniformManager._uniforms));
+    // console.log("Packed light:", dump);
   }
 }

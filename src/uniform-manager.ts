@@ -41,7 +41,7 @@ export interface UniformManagerOptions {
 
 export class UniformManager {
     private _device: GPUDevice;
-    private _uniforms?: UniformItem[];
+    public _uniforms?: UniformItem[];
     private _textures?: UniformTextureItem[];
     private _buffers?: UniformBufferItem[];
 
@@ -51,7 +51,7 @@ export class UniformManager {
 
     private _compute = false;
 
-    private _uniformArr: ArrayBuffer;
+    public _uniformArr: ArrayBuffer;
     private _uniformBuffer: GPUBuffer;
 
     private _bindGroup: GPUBindGroup;

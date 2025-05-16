@@ -117,13 +117,13 @@ export class LightManager {
             const encoded = light.encode();
             const packed = packUniforms([encoded]);
 
-            const dump = new Uint8Array(packed).reduce((a, x) => {
-                a.push(x.toString(16).padStart(2, "0"));
-                return a;
-            }, []).join(":");
+            // const dump = new Uint8Array(packed).reduce((a, x) => {
+            //     a.push(x.toString(16).padStart(2, "0"));
+            //     return a;
+            // }, []).join(":");
 
-            console.log("Encoded:", JSON.stringify(encoded)); // It is correctly starting with 1.0 here
-            console.log("Packed light:", dump); // It is offset by one here
+            // console.log("Encoded:", JSON.stringify(encoded));
+            // console.log("Packed light:", dump);
 
             this._lightsArr.set(new Uint8Array(packed), offset);
             i++;

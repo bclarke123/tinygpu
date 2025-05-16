@@ -61,10 +61,10 @@ struct ShaderLight {
 // Material-Specific Uniforms for Blinn-Phong (BG_UNIFORMS - Group 2)
 //--------------------------------------------------------------------
 struct BlinnPhongMaterialParams {
+  shininess: f32,             // Alpha - controls highlight size/sharpness
   ambient_color: vec3<f32>,   // Ka
   diffuse_color: vec3<f32>,   // Kd - base color of the surface
   specular_color: vec3<f32>,  // Ks - color of the highlight
-  shininess: f32,             // Alpha - controls highlight size/sharpness
   // Optional: diffuse_texture_factor: f32, // 0 if no texture, 1 if texture
 };
 
@@ -101,15 +101,35 @@ fn vs_main(in: VSIn) -> VSOut {
     return vs_out;
 }
 
+fn safe_normalize(v: vec3<f32>) -> vec3<f32> {
+    let len = length(v);
+    if (len < 0.00001) { // Check against a small epsilon
+        return vec3<f32>(0.0, 0.0, 0.0); // Or a default direction like (0,0,1)
+    }
+    return v / len;
+}
+
 //--------------------------------------------------------------------
 // Fragment Shader (fs_main)
 //--------------------------------------------------------------------
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
-    let N = normalize(in.world_normal); // World Normal
-    let V = normalize(scene_uniforms.camera_position - in.world_position); // View Vector
+    let N_raw_from_vs = in.world_normal; // This is what VSOut provided
+    let N = safe_normalize(N_raw_from_vs); // Your current N
 
-    // return vec4(abs(N) * 0.5 + 0.5, 1.0);
+    // --- Test 1: What is N_raw_from_vs? ---
+    // If N_raw_from_vs itself has very small length for some fragments, they'll be black here.
+    // return vec4<f32>(abs(N_raw_from_vs), 1.0);
+
+    // --- Test 2: Does safe_normalize make N zero for some fragments? ---
+    // if (length(N) < 0.001) {
+    //     // If N became (0,0,0) because N_raw_from_vs was too small
+    //     return vec4<f32>(0.0, 0.0, 0.0, 1.0); // MAGENTA if N is zero after safe_normalize
+    // }
+
+    // return vec4<f32>(abs(N), 1.0); 
+
+    let V = safe_normalize(scene_uniforms.camera_position - in.world_position); // View Vector
 
     // Base diffuse color for the material
     var base_diffuse_albedo = material_params.diffuse_color;
@@ -117,7 +137,6 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     // if (material_params.diffuse_texture_factor > 0.5) {
     //     base_diffuse_albedo = textureSample(diffuse_texture, material_sampler, in.uv).rgb * material_params.diffuse_color;
     // }
-
 
     var total_outgoing_radiance = vec3<f32>(0.0);
     var accumulated_ambient_from_lights = vec3<f32>(0.0);
@@ -141,31 +160,49 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
             let light_vector = light_world_pos - in.world_position;
             let distance_to_light = length(light_vector);
 
+            if (distance_to_light < 0.00001) {
+                continue;
+            }
+
             // Range check
             if (L_info.range > 0.0 && distance_to_light > L_info.range) {
                 continue;
             }
 
-            let L = normalize(light_vector); // Direction from surface to light
+            let L = safe_normalize(light_vector); // Direction from surface to light
 
             // Attenuation
             let att_const = L_info.attenuation.x;
             let att_lin = L_info.attenuation.y;
             let att_quad = L_info.attenuation.z;
-            let attenuation = 1.0 / (att_const + att_lin * distance_to_light + att_quad * distance_to_light * distance_to_light);
+            let attenuation_denominator = att_const + att_lin * distance_to_light + att_quad * distance_to_light * distance_to_light;
 
+            // Prevent division by zero for attenuation, though with att_const=1.0 it shouldn't happen
+            if (attenuation_denominator < 0.00001) {
+                continue;
+            }
+            let attenuation = 1.0 / attenuation_denominator;
             let effective_light_color = light_color_final * attenuation;
 
             // Diffuse Reflection (Lambertian)
             let NdotL = max(dot(N, L), 0.0);
+
             total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * base_diffuse_albedo * NdotL);
+            
+            // return vec4(total_outgoing_radiance, 1.0);
 
             // Specular Reflection (Blinn-Phong)
-            let H = normalize(L + V); // Halfway vector
-            let NdotH = max(dot(N, H), 0.0);
-            let specular_factor = pow(NdotH, material_params.shininess);
-            total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color * specular_factor);
+            let H_vec = L + V;
+            // // return vec4(H_vec, 1.0);
+
+            if (length(H_vec) > 0.00001) {
+                let H = safe_normalize(H_vec); // Halfway vector
+                let NdotH = max(dot(N, H), 0.0);
+                let specular_factor = pow(NdotH, material_params.shininess);
+                total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color * specular_factor);
+            }
         }
+
         // TODO: Add 'else if' blocks for Directional (type 2) and Spot (type 3) lights
     }
 
