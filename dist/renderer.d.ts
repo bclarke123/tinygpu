@@ -39,7 +39,7 @@ export declare class Renderer {
     computePipelineFor(task: ComputeTask): GPUComputePipeline;
     compute(tasks: ComputeTask[]): void;
     createMaterial<T extends Material, O>(c: new (device: GPUDevice, o?: O) => T, o?: O): T;
-    createGeometry<T extends Geometry>(c: new (renderer: Renderer) => T): T;
+    createGeometry<T extends Geometry, O>(c: new (renderer: Renderer, o?: O) => T, o?: O): T;
     createMesh(geo: Geometry, mat: Material, instances?: number, buffers?: UniformBufferItem[]): Mesh;
     createScene(): Scene;
     createPerspectiveCamera(options?: PerspectiveCameraProps): PerspectiveCamera;

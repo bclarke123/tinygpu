@@ -31,16 +31,18 @@ export interface UniformManagerOptions {
     samplers?: UniformSamplerItem[];
     label?: string;
     uniformVisibility?: GPUShaderStageFlags;
+    compute?: boolean;
 }
 export declare class UniformManager {
     private _device;
-    private _uniforms?;
+    _uniforms?: UniformItem[];
     private _textures?;
     private _buffers?;
     private _uniformsDirty;
     private _texturesDirty;
     private _buffersDirty;
-    private _uniformArr;
+    private _compute;
+    _uniformArr: ArrayBuffer;
     private _uniformBuffer;
     private _bindGroup;
     private _bindGroupLayout;

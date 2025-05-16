@@ -38,7 +38,7 @@
                     const geo = renderer.createGeometry(geoType);
                     const mat = renderer.createMaterial(
                         tinygpu.material.BlinnPhongMaterial,
-                        { shininess: 10.0 },
+                        { shininess: 1000.0 },
                     );
                     const mesh = renderer.createMesh(geo, mat);
                     return mesh;
