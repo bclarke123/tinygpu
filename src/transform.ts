@@ -124,7 +124,7 @@ export class Transform {
     zValue: number,
     order: RotationOrder = "xyz",
   ) {
-    this._rotation = quat.fromEuler(xValue, yValue, zValue, order);
+    quat.fromEuler(xValue, yValue, zValue, order, this._rotation);
     this.makeDirty();
   }
 
