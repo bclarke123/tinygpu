@@ -44,43 +44,19 @@
                     return mesh;
                 };
 
-                const parent = new tinygpu.Transform();
-
-                const radius = 3;
-                const third = (Math.PI * 2) / 3;
-
                 const cube = createMesh(tinygpu.geometry.CubeGeometry);
-                cube.setPosition(
-                    Math.cos(third) * radius,
-                    0,
-                    Math.sin(third) * radius,
-                );
-                parent.add(cube);
+                scene.add(cube);
 
-                const sphere = createMesh(tinygpu.geometry.SphereGeometry);
-                sphere.setPosition(
-                    Math.cos(third * 2) * radius,
-                    0,
-                    Math.sin(third * 2) * radius,
-                );
-                parent.add(sphere);
-
-                const tet = createMesh(tinygpu.geometry.TetrahedronGeometry);
-                tet.setPosition(
-                    Math.cos(third * 3) * radius,
-                    0,
-                    Math.sin(third * 3) * radius,
-                );
-                parent.add(tet);
-
-                scene.add(parent);
-
-                const light = new tinygpu.lights.Light();
+                const light = new tinygpu.lights.Light(1, new tinygpu.Color(0.7, 0.7, 0.8), 0.8);
+                light.setPosition(4, 3, 5);
                 scene.add(light);
+
+                const ambient = new tinygpu.lights.Light(0);
+                scene.add(ambient);
 
                 const animate = () => {
                     const now = performance.now() / 1000;
-                    parent.setRotation(0, now, now * 0.7);
+                    cube.setRotation(0, now, now * 0.7);
                     renderer.render(scene, camera);
                     requestAnimationFrame(animate);
                 };

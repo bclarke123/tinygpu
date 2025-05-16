@@ -24,7 +24,7 @@ export class BlinnPhongMaterial extends Material {
   private _device: GPUDevice;
 
   constructor(device: GPUDevice, options: BlinnPhongMaterialOptions) {
-    const ambientColor = options.ambientColor || vec3.fromValues(0.6, 0.6, 0.6);
+    const ambientColor = options.ambientColor || vec3.fromValues(0.1, 0.1, 0.1);
     const diffuseColor = options.diffuseColor || vec3.fromValues(0.7, 0.7, 0.7); // Default diffuse
     const specularColor =
       options.specularColor || vec3.fromValues(1.0, 1.0, 1.0); // Default white specular

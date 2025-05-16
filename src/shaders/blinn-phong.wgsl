@@ -11,8 +11,8 @@
 //--------------------------------------------------------------------
 struct ShaderLight {
     matrix: mat4x4<f32>,      // Light's world matrix
-    color: vec3<f32>,
     attenuation: vec3<f32>,   // x: const, y: lin, z: quad
+    color: vec4<f32>,
     intensity: f32,
     range: f32,
     lightType: u32,           // 0: Ambient, 1: Point (consistent with LightType enum)
@@ -109,6 +109,8 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let N = normalize(in.world_normal); // World Normal
     let V = normalize(scene_uniforms.camera_position - in.world_position); // View Vector
 
+    // return vec4(abs(N) * 0.5 + 0.5, 1.0);
+
     // Base diffuse color for the material
     var base_diffuse_albedo = material_params.diffuse_color;
     // If using a texture for diffuse:
@@ -127,7 +129,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
             continue;
         }
 
-        let light_color_final = L_info.color * L_info.intensity;
+        let light_color_final = L_info.color.rgb * L_info.intensity;
 
         // --- AMBIENT LIGHT TYPE ---
         if (L_info.lightType == 0u) { // LightType.Ambient
