@@ -223,14 +223,12 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
             total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * base_diffuse_albedo * NdotL);
 
             // Specular
-            if (NdotL > 0.0) { // Only calculate specular if light hits the surface
-                let H_vec = L + V;
-                if (length(H_vec) > 0.00001) {
-                    let H = safe_normalize(H_vec);
-                    let NdotH = max(dot(N, H), 0.0);
-                    let specular_factor = pow(NdotH, material_params.shininess);
-                    total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color * specular_factor);
-                }
+            let H_vec = L + V;
+            if (length(H_vec) > 0.00001) {
+                let H = safe_normalize(H_vec);
+                let NdotH = max(dot(N, H), 0.0);
+                let specular_factor = pow(NdotH, material_params.shininess);
+                total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color * specular_factor);
             }
         }
         // TODO: Add 'else if' block for Spot (type 3) lights
