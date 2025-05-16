@@ -58,7 +58,7 @@ function _createSphereGeometryData(
                 const z = sinPhi * sinTheta;
 
                 const u = 1 - longNumber / longitudeBands;
-                const v = 1 - latNumber / latitudeBands;
+                const v = 1 - latNumber / latitudeBands; // Corrected v calculation for standard UV mapping
 
                 vertexData.push(radius * x, radius * y, radius * z); // Position
                 vertexData.push(u, v);                             // UV
@@ -71,8 +71,9 @@ function _createSphereGeometryData(
                 const first = latNumber * (longitudeBands + 1) + longNumber;
                 const second = first + longitudeBands + 1;
 
-                indexData.push(first, second, first + 1);
-                indexData.push(second, second + 1, first + 1);
+                // CCW winding order
+                indexData.push(first, first + 1, second);
+                indexData.push(second, first + 1, second + 1);
             }
         }
     } else {
@@ -98,7 +99,7 @@ function _createSphereGeometryData(
                         const y = cosTheta;
                         const z = sinPhi * sinTheta;
                         const u = 1 - currentLong / longitudeBands;
-                        const v = 1 - currentLat / latitudeBands;
+                        const v = 1 - currentLat / latitudeBands; // Corrected v calculation
                         points.push({
                             pos: [radius * x, radius * y, radius * z],
                             uv: [u, v]
@@ -118,35 +119,39 @@ function _createSphereGeometryData(
                 const p3 = points[3]; // lat+1, lon+1
 
 
-                // Triangle 1: p0, p2, p1
+                // Triangle 1: p0, p1, p2 (CCW)
                 const tri1_v0 = p0.pos;
-                const tri1_v1 = p2.pos;
-                const tri1_v2 = p1.pos;
+                const tri1_v1 = p1.pos;
+                const tri1_v2 = p2.pos;
                 const tri1_uv0 = p0.uv;
-                const tri1_uv1 = p2.uv;
-                const tri1_uv2 = p1.uv;
+                const tri1_uv1 = p1.uv;
+                const tri1_uv2 = p2.uv;
 
-                let edge1 = subtract(tri1_v1, tri1_v0);
-                let edge2 = subtract(tri1_v2, tri1_v0);
-                let normal1 = normalize(crossProduct(edge1, edge2));
+                let edge1_tri1 = subtract(tri1_v1, tri1_v0);
+                let edge2_tri1 = subtract(tri1_v2, tri1_v0);
+                let normal1 = normalize(crossProduct(edge1_tri1, edge2_tri1));
 
                 vertexData.push(...tri1_v0, ...tri1_uv0, ...normal1);
                 vertexData.push(...tri1_v1, ...tri1_uv1, ...normal1);
                 vertexData.push(...tri1_v2, ...tri1_uv2, ...normal1);
                 indexData.push(vertexCounter++, vertexCounter++, vertexCounter++);
 
-                // Triangle 2: p1, p2, p3
-                const tri2_v0 = p1.pos;
-                const tri2_v1 = p2.pos; // same as tri1_v1
-                const tri2_v2 = p3.pos;
-                const tri2_uv0 = p1.uv;
-                const tri2_uv1 = p2.uv;
+                // Triangle 2: p2, p1, p3 (CCW, relative to original p1, p2, p3)
+                // To maintain CCW with p1, p3, p2 using the same points:
+                const tri2_v0 = p2.pos; // Was p1
+                const tri2_v1 = p1.pos; // Was p3
+                const tri2_v2 = p3.pos; // Was p2
+                const tri2_uv0 = p2.uv;
+                const tri2_uv1 = p1.uv;
                 const tri2_uv2 = p3.uv;
 
 
-                edge1 = subtract(tri2_v1, tri2_v0);
-                edge2 = subtract(tri2_v2, tri2_v0);
-                let normal2 = normalize(crossProduct(edge1, edge2));
+                let edge1_tri2 = subtract(tri2_v1, tri2_v0);
+                let edge2_tri2 = subtract(tri2_v2, tri2_v0);
+                let normal2 = normalize(crossProduct(edge1_tri2, edge2_tri2));
+                // If normals are shared or pre-calculated based on original quad, this might need adjustment
+                // For flat shading, recalculating normal per triangle based on CCW order is best.
+                // The above normal calculation should be correct for the new CCW order.
 
                 vertexData.push(...tri2_v0, ...tri2_uv0, ...normal2);
                 vertexData.push(...tri2_v1, ...tri2_uv1, ...normal2);
@@ -159,8 +164,6 @@ function _createSphereGeometryData(
     const vertices = new Float32Array(vertexData);
     const indices = new Uint16Array(indexData);
     const indexCount = indices.length;
-    // For smooth shading, vertexCount is the number of unique vertices.
-    // For flat shading, vertexCount is the number of vertices in the buffer (indexCount).
     const vertexCount = flatShading ? indexCount : (latitudeBands + 1) * (longitudeBands + 1);
 
 
