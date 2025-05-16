@@ -33,10 +33,10 @@ export class BlinnPhongMaterial extends Material {
     // console.log("B-P", options);
 
     const materialUniformItems: UniformItem[] = [
+      { name: "ambient_color", value: ambientColor, type: "vec3" },
+      { name: "diffuse_color", value: diffuseColor, type: "vec3" },
+      { name: "specular_color", value: specularColor, type: "vec3" },
       { name: "shininess", value: shininess, type: "f32" },
-      { name: "ambient_color", value: ambientColor },
-      { name: "diffuse_color", value: diffuseColor },
-      { name: "specular_color", value: specularColor },
     ];
 
     // Create a UniformManager instance specifically for this material's uniforms

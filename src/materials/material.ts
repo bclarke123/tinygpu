@@ -32,6 +32,6 @@ export abstract class Material {
     // }, []).join(":");
 
     // console.log("Encoded:", JSON.stringify(this._uniformManager._uniforms));
-    // console.log("Packed light:", dump);
+    // console.log("Packed material:", dump);
   }
 }

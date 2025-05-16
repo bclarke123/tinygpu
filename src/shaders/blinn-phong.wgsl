@@ -61,11 +61,10 @@ struct ShaderLight {
 // Material-Specific Uniforms for Blinn-Phong (BG_UNIFORMS - Group 2)
 //--------------------------------------------------------------------
 struct BlinnPhongMaterialParams {
-  shininess: f32,             // Alpha - controls highlight size/sharpness
   ambient_color: vec3<f32>,   // Ka
   diffuse_color: vec3<f32>,   // Kd - base color of the surface
   specular_color: vec3<f32>,  // Ks - color of the highlight
-  // Optional: diffuse_texture_factor: f32, // 0 if no texture, 1 if texture
+  shininess: f32,             // Alpha - controls highlight size/sharpness
 };
 
 @group(BG_UNIFORMS) @binding(0) var<uniform> material_params: BlinnPhongMaterialParams;
@@ -116,19 +115,6 @@ fn safe_normalize(v: vec3<f32>) -> vec3<f32> {
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let N_raw_from_vs = in.world_normal; // This is what VSOut provided
     let N = safe_normalize(N_raw_from_vs); // Your current N
-
-    // --- Test 1: What is N_raw_from_vs? ---
-    // If N_raw_from_vs itself has very small length for some fragments, they'll be black here.
-    // return vec4<f32>(abs(N_raw_from_vs), 1.0);
-
-    // --- Test 2: Does safe_normalize make N zero for some fragments? ---
-    // if (length(N) < 0.001) {
-    //     // If N became (0,0,0) because N_raw_from_vs was too small
-    //     return vec4<f32>(0.0, 0.0, 0.0, 1.0); // MAGENTA if N is zero after safe_normalize
-    // }
-
-    // return vec4<f32>(abs(N), 1.0); 
-
     let V = safe_normalize(scene_uniforms.camera_position - in.world_position); // View Vector
 
     // Base diffuse color for the material
