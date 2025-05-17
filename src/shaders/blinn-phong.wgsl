@@ -61,9 +61,9 @@ struct ShaderLight {
 // Material-Specific Uniforms for Blinn-Phong (BG_UNIFORMS - Group 2)
 //--------------------------------------------------------------------
 struct BlinnPhongMaterialParams {
-  ambient_color: vec3<f32>,   // Ka
-  diffuse_color: vec3<f32>,   // Kd - base color of the surface
-  specular_color: vec3<f32>,  // Ks - color of the highlight
+  ambient_color: vec4<f32>,   // Ka
+  diffuse_color: vec4<f32>,   // Kd - base color of the surface
+  specular_color: vec4<f32>,  // Ks - color of the highlight
   shininess: f32,             // Alpha - controls highlight size/sharpness
 };
 
@@ -118,7 +118,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let V = safe_normalize(scene_uniforms.camera_position - in.world_position); // View Vector
 
     // Base diffuse color for the material
-    var base_diffuse_albedo = material_params.diffuse_color;
+    var base_diffuse_albedo = material_params.diffuse_color.rgb;
     // If using a texture for diffuse:
     // if (material_params.diffuse_texture_factor > 0.5) {
     //     base_diffuse_albedo = textureSample(diffuse_texture, material_sampler, in.uv).rgb * material_params.diffuse_color;
@@ -185,7 +185,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
                 let H = safe_normalize(H_vec); // Halfway vector
                 let NdotH = max(dot(N, H), 0.0);
                 let specular_factor = pow(NdotH, material_params.shininess);
-                total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color * specular_factor);
+                total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color.rgb * specular_factor);
             }
         }
         // --- DIRECTIONAL LIGHT TYPE ---
@@ -228,7 +228,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
                 let H = safe_normalize(H_vec);
                 let NdotH = max(dot(N, H), 0.0);
                 let specular_factor = pow(NdotH, material_params.shininess);
-                total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color * specular_factor);
+                total_outgoing_radiance = total_outgoing_radiance + (effective_light_color * material_params.specular_color.rgb * specular_factor);
             }
         }
         // TODO: Add 'else if' block for Spot (type 3) lights
@@ -236,7 +236,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 
     // Combine lighting components
     // Ambient term: Material's ambient reflectivity * sum of all ambient-type lights
-    let final_color = (material_params.ambient_color * accumulated_ambient_from_lights) + total_outgoing_radiance;
+    let final_color = (material_params.ambient_color.rgb * accumulated_ambient_from_lights) + total_outgoing_radiance;
 
     return vec4<f32>(final_color, 1.0); // Output color (alpha usually 1.0 for opaque)
 }

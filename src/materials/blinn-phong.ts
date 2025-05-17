@@ -1,41 +1,41 @@
 import { Material } from "./material";
 import { UniformManager } from "../uniform-manager";
-import { Renderer } from "../renderer";
-import { Vec3, vec3 } from "wgpu-matrix";
+import { vec3 } from "wgpu-matrix";
 import { UniformItem } from "../uniform-utils";
 
 import shaderHeader from "../shaders/header.wgsl";
 import blinnPhongShader from "../shaders/blinn-phong.wgsl";
+import { Color } from "../color";
 
 export interface BlinnPhongMaterialOptions {
-  ambientColor?: Vec3;
-  diffuseColor?: Vec3;
-  specularColor?: Vec3;
+  ambientColor?: Color;
+  diffuseColor?: Color;
+  specularColor?: Color;
   shininess?: number;
 }
 
 export class BlinnPhongMaterial extends Material {
   // Properties specific to Blinn-Phong
-  public ambientColor: Vec3;
-  public diffuseColor: Vec3;
-  public specularColor: Vec3;
+  public ambientColor: Color;
+  public diffuseColor: Color;
+  public specularColor: Color;
   public shininess: number;
 
   private _device: GPUDevice;
 
   constructor(device: GPUDevice, options: BlinnPhongMaterialOptions) {
-    const ambientColor = options.ambientColor || vec3.fromValues(0.1, 0.1, 0.1);
-    const diffuseColor = options.diffuseColor || vec3.fromValues(0.7, 0.7, 0.7); // Default diffuse
+    const ambientColor = options.ambientColor || new Color(0.1, 0.1, 0.1);
+    const diffuseColor = options.diffuseColor || new Color(0.7, 0.7, 0.7);
     const specularColor =
-      options.specularColor || vec3.fromValues(1.0, 1.0, 1.0); // Default white specular
+      options.specularColor || new Color(1.0, 1.0, 1.0);
     const shininess = options.shininess || 32.0;
 
     // console.log("B-P", options);
 
     const materialUniformItems: UniformItem[] = [
-      { name: "ambient_color", value: ambientColor, type: "vec3" },
-      { name: "diffuse_color", value: diffuseColor, type: "vec3" },
-      { name: "specular_color", value: specularColor, type: "vec3" },
+      { name: "ambient_color", value: ambientColor, type: "color" },
+      { name: "diffuse_color", value: diffuseColor, type: "color" },
+      { name: "specular_color", value: specularColor, type: "color" },
       { name: "shininess", value: shininess, type: "f32" },
     ];
 
@@ -58,7 +58,7 @@ export class BlinnPhongMaterial extends Material {
   // Implement abstract members from Material base class
   get cacheKey(): string {
     // A simple cache key, could be more sophisticated
-    return `blinn-phong-${this.ambientColor.join(",")}-${this.diffuseColor.join(",")}-${this.specularColor.join(",")}-${this.shininess}`;
+    return `blinn-phong-${this.ambientColor}-${this.diffuseColor}-${this.specularColor}-${this.shininess}`;
   }
 
   get shaderCode(): GPUShaderModule {
