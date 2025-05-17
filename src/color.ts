@@ -20,4 +20,8 @@ export class Color {
     this.buffer.set([this.r, this.g, this.b, this.a]);
     return this.buffer;
   }
+
+  toString() {
+    return this.buffer.join(",");
+  }
 }
