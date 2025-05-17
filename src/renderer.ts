@@ -223,13 +223,13 @@ export class Renderer {
       },
       primitive: {
         topology: mesh.material.topology,
-        stripIndexFormat: undefined,
+        stripIndexFormat: mesh.material.stripIndexFormat,
         frontFace: "ccw",
         cullMode: mesh.cullMode,
       },
       depthStencil: {
-        depthWriteEnabled: true,
-        depthCompare: "less",
+        depthWriteEnabled: mesh.depthWriteEnabled,
+        depthCompare: mesh.depthCompare,
         format: "depth24plus-stencil8",
       },
     };
