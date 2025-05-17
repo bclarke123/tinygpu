@@ -34,6 +34,20 @@
                 const scene = renderer.createScene();
                 const camera = renderer.createPerspectiveCamera();
 
+                const cubemap = await tinygpu.material.Cubemap.createFromFiles(
+                    renderer,
+                    "./cubemap/posx.webp",
+                    "./cubemap/negx.webp",
+                    "./cubemap/posy.webp",
+                    "./cubemap/negy.webp",
+                    "./cubemap/posz.webp",
+                    "./cubemap/negz.webp",
+                );
+
+                const skybox = new tinygpu.Skybox(renderer, cubemap);
+
+                scene.skybox = skybox;
+
                 const createMesh = (geoType, shininess) => {
                     const geo = renderer.createGeometry(geoType);
                     const mat = renderer.createMaterial(
@@ -127,13 +141,13 @@
                 const animate = () => {
                     const now = performance.now() / 1000;
 
-                    // const cr = 10.0;
-                    // camera.setPosition(
-                    //     Math.cos(now * 0.7) * cr,
-                    //     0,
-                    //     Math.sin(now * 0.7) * cr,
-                    // );
-                    // camera.setTarget([0, 0, 0]);
+                    const cr = 10.0;
+                    camera.setPosition(
+                        Math.cos(now * 0.2) * cr,
+                        0,
+                        Math.sin(now * 0.2) * cr,
+                    );
+                    camera.setTarget([0, 0, 0]);
 
                     parent.setRotation(0, now * 0.5, now * 0.2);
                     renderer.render(scene, camera);
