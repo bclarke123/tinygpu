@@ -26,5 +26,9 @@ fn vs_main(in: VSIn) -> VSOut {
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
-    return textureSample(skyboxTexture, skyboxSampler, normalize(in.texCoord));
+
+    let texCoord = normalize(in.texCoord) * vec3(-1.0, 1.0, 1.0);
+    let px = textureSample(skyboxTexture, skyboxSampler, texCoord).rgb;
+
+    return vec4f(px, 1.0);
 }
