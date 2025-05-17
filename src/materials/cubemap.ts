@@ -1,5 +1,5 @@
 import { Renderer } from "../renderer";
-import { ImageTexture, Texture } from "../texture";
+import { ImageTexture, MappedTexture, Texture } from "../texture";
 
 export class Cubemap {
     posx: ImageTexture;
@@ -27,31 +27,29 @@ export class Cubemap {
             posz, negz
         ];
 
-        const cubemapTexture = renderer.createTexture({
-            format: "rgba8unorm",
-            size: [posx.width, posx.height, 6],
-            usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
-            dimension: "2d"
-        });
+        const cubemapTexture = new MappedTexture(
+            {
+                format: "rgba8unorm",
+                size: [posx.width, posx.height, 6],
+                usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+                dimension: "2d"
+            },
+            {
+                dimension: "cube"
+            }
+        );
+
+        cubemapTexture.upload(renderer.device);
 
         this.cubemapTexture = cubemapTexture;
 
         this.images.forEach((im, layer) => {
             renderer.device.queue.copyExternalImageToTexture(
-                { source: im.imageData, flipY: true },
+                { source: im.imageData },
                 { texture: this.cubemapTexture.texture, origin: [0, 0, layer] },
-                { width: im.width, height: im.height, depthOrArrayLayers: 1 }
+                { width: im.width, height: im.height }
             );
         });
-
-        cubemapTexture.viewDescriptor = {
-            dimension: "cube",
-            aspect: "all",
-            baseMipLevel: 0,
-            mipLevelCount: 1,
-            baseArrayLayer: 0,
-            arrayLayerCount: 6
-        };
     }
 
     static async createFromFiles(renderer: Renderer, posx: string, negx: string, posy: string, negy: string, posz: string, negz: string): Promise<Cubemap> {
