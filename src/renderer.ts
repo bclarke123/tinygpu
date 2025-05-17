@@ -18,6 +18,8 @@ import { UniformBufferItem } from "./uniform-manager";
 
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
+  antialias?: boolean;
+  pixelRatio?: number;
 }
 
 export class Renderer {
@@ -32,7 +34,13 @@ export class Renderer {
   depthTexture: GPUTexture;
   depthTextureView: GPUTextureView;
 
+  antialias = true;
+  msaaTexture: GPUTexture;
+  msaaTextureView: GPUTextureView;
+  samples = 4;
+
   canvasSize: Vec2 = vec2.create(1, 1);
+  pixelRatio: number;
   sizeDirty = true;
 
   commandEncoder?: GPUCommandEncoder;
@@ -42,7 +50,15 @@ export class Renderer {
   private _computePipelineCache: Map<string, GPUComputePipeline> = new Map();
 
   constructor(options: RendererOptions = {}) {
-    this.canvas ??= options.canvas;
+    this.canvas = options.canvas;
+
+    if (options.antialias !== undefined) {
+      this.antialias = options.antialias;
+    }
+
+    if (options.pixelRatio !== undefined) {
+      this.pixelRatio = options.pixelRatio;
+    }
 
     console.log("Renderer initialized");
   }
@@ -83,8 +99,9 @@ export class Renderer {
     });
 
     const onResize = () => {
-      const width = this.canvas.offsetWidth;
-      const height = this.canvas.offsetHeight;
+      const dpr = this.pixelRatio || window.devicePixelRatio || 1;
+      const width = this.canvas.offsetWidth * dpr;
+      const height = this.canvas.offsetHeight * dpr;
 
       if (width === this.canvasSize[0] && height === this.canvasSize[1]) {
         return;
@@ -96,7 +113,20 @@ export class Renderer {
       this.canvasSize.set([width, height]);
       this.sizeDirty = true;
 
-      // console.log("Canvas size", width, height);
+      // console.log("Canvas size", width, height, dpr);
+
+      if (this.antialias) {
+        this.msaaTexture?.destroy();
+        this.msaaTexture = this.device.createTexture({
+          label: "MSAA texture",
+          size: { width, height },
+          format: this.format,
+          usage: GPUTextureUsage.RENDER_ATTACHMENT,
+          sampleCount: this.samples
+        });
+
+        this.msaaTextureView = this.msaaTexture.createView();
+      }
 
       this.depthTexture?.destroy();
       this.depthTexture = this.device.createTexture({
@@ -104,6 +134,7 @@ export class Renderer {
         size: { width, height },
         format: this.depthFormat,
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        sampleCount: this.antialias ? this.samples : 1
       });
 
       this.depthTextureView = this.depthTexture.createView({
@@ -176,7 +207,7 @@ export class Renderer {
       ],
     });
 
-    const pipeline = this.device!.createRenderPipeline({
+    const pipelineDescriptor: GPURenderPipelineDescriptor = {
       layout,
       vertex: {
         module: shaderCode,
@@ -200,8 +231,18 @@ export class Renderer {
         depthWriteEnabled: true,
         depthCompare: "less",
         format: "depth24plus-stencil8",
-      },
-    });
+      }
+    };
+
+    if (this.antialias) {
+      pipelineDescriptor.multisample = {
+        count: this.samples,
+        mask: 0xffffffff,
+        alphaToCoverageEnabled: true
+      };
+    }
+
+    const pipeline = this.device!.createRenderPipeline(pipelineDescriptor);
 
     this._pipelineCache.set(cacheKey, pipeline);
     // console.log("Pipeline created", cacheKey);
@@ -212,10 +253,14 @@ export class Renderer {
   render(scene: Scene, camera: Camera) {
     const [width, height] = this.canvasSize;
 
-    const outputTexture = this.context.getCurrentTexture();
-    const outputTextureView = outputTexture.createView({
+    const canvasTexture = this.context.getCurrentTexture();
+    const canvasTextureView = canvasTexture.createView({
       label: "Canvas output texture view",
     });
+
+    const outputTextureView = this.antialias ? this.msaaTextureView : canvasTextureView;
+
+    const resolveTarget = this.antialias ? canvasTextureView : undefined;
 
     const renderPassDesc = {
       label: "Render pass",
@@ -225,6 +270,7 @@ export class Renderer {
           clearValue: [0, 0, 0, 1],
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
+          resolveTarget
         },
       ],
       depthStencilAttachment: {
