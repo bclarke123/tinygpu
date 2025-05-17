@@ -10,12 +10,15 @@ export abstract class Texture {
   abstract get label(): string;
   abstract get format(): GPUTextureFormat;
   abstract get dimension(): GPUTextureDimension;
+  abstract get texture(): GPUTexture;
 }
 
 export class MappedTexture extends Texture {
   private _descriptor: GPUTextureDescriptor;
   private _view: GPUTextureView;
   private _texture: GPUTexture;
+
+  viewDescriptor: GPUTextureViewDescriptor;
 
   constructor(descriptor: GPUTextureDescriptor) {
     super();
@@ -26,7 +29,7 @@ export class MappedTexture extends Texture {
   }
   get view(): GPUTextureView {
     if (!this._view) {
-      this._view = this._texture.createView();
+      this._view = this._texture.createView(this.viewDescriptor);
     }
     return this._view;
   }
@@ -48,9 +51,11 @@ export class MappedTexture extends Texture {
   get format(): GPUTextureFormat {
     return this._texture.format;
   }
-
   get dimension(): GPUTextureDimension {
     return this._texture.dimension;
+  }
+  get texture(): GPUTexture {
+    return this._texture;
   }
 }
 
@@ -103,6 +108,10 @@ export class DefaultTexture extends Texture {
 
   get dimension(): GPUTextureDimension {
     return this._texture.dimension;
+  }
+
+  get texture() {
+    return this._texture;
   }
 
   upload(device: GPUDevice): void {
@@ -162,6 +171,10 @@ export class ImageTexture extends Texture {
     return this._height;
   }
 
+  get imageData(): ImageBitmap {
+    return this._imagedata;
+  }
+
   get descriptor(): GPUTextureDescriptor {
     return {
       size: {
@@ -199,6 +212,10 @@ export class ImageTexture extends Texture {
 
   get dimension(): GPUTextureDimension {
     return this._texture.dimension;
+  }
+
+  get texture(): GPUTexture {
+    return this._texture;
   }
 
   upload(device: GPUDevice): void {
