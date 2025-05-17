@@ -18,23 +18,29 @@ export class MappedTexture extends Texture {
   private _view: GPUTextureView;
   private _texture: GPUTexture;
 
-  viewDescriptor: GPUTextureViewDescriptor;
+  private _viewDescriptor: GPUTextureViewDescriptor;
 
-  constructor(descriptor: GPUTextureDescriptor) {
+  constructor(descriptor: GPUTextureDescriptor, viewDescriptor?: GPUTextureViewDescriptor) {
     super();
     this._descriptor = descriptor;
+    this._viewDescriptor = viewDescriptor;
   }
   get descriptor(): GPUTextureDescriptor {
     return this._descriptor;
   }
   get view(): GPUTextureView {
     if (!this._view) {
-      this._view = this._texture.createView(this.viewDescriptor);
+      this._view = this._texture.createView(this._viewDescriptor);
     }
     return this._view;
   }
   upload(device: GPUDevice): void {
-    this._texture = device.createTexture(this.descriptor);
+    if (!this._texture) {
+      this._texture = device.createTexture(this.descriptor);
+    }
+  }
+  createView() {
+    this._view = this._texture.createView(this._viewDescriptor);
   }
   dispose(): void {
     this._texture.destroy();
