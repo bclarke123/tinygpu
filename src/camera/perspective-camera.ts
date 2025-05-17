@@ -65,11 +65,9 @@ export class PerspectiveCamera extends Camera {
   // Using vec3.equals for comparison and vec3.copy for setting
 
   public setPosition(x: number, y: number, z: number): void {
-    super.setPosition(x, y, z);
     const newPosition = vec3.create(x, y, z);
     if (!vec3.equals(this.position, newPosition)) {
-      // Use copy to avoid modifying the input array if it's reused elsewhere
-      this.position = vec3.copy(newPosition, this.position); // copy(src, dst?)
+      super.setPosition(x, y, z);
       this._isViewDirty = true;
     }
   }
