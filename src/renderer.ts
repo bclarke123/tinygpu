@@ -122,7 +122,7 @@ export class Renderer {
           size: { width, height },
           format: this.format,
           usage: GPUTextureUsage.RENDER_ATTACHMENT,
-          sampleCount: this.samples
+          sampleCount: this.samples,
         });
 
         this.msaaTextureView = this.msaaTexture.createView();
@@ -134,7 +134,7 @@ export class Renderer {
         size: { width, height },
         format: this.depthFormat,
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
-        sampleCount: this.antialias ? this.samples : 1
+        sampleCount: this.antialias ? this.samples : 1,
       });
 
       this.depthTextureView = this.depthTexture.createView({
@@ -222,23 +222,23 @@ export class Renderer {
         ],
       },
       primitive: {
-        topology: "triangle-list",
+        topology: mesh.material.topology,
         stripIndexFormat: undefined,
         frontFace: "ccw",
-        cullMode: "back",
+        cullMode: mesh.cullMode,
       },
       depthStencil: {
         depthWriteEnabled: true,
         depthCompare: "less",
         format: "depth24plus-stencil8",
-      }
+      },
     };
 
     if (this.antialias) {
       pipelineDescriptor.multisample = {
         count: this.samples,
         mask: 0xffffffff,
-        alphaToCoverageEnabled: true
+        alphaToCoverageEnabled: true,
       };
     }
 
@@ -258,7 +258,9 @@ export class Renderer {
       label: "Canvas output texture view",
     });
 
-    const outputTextureView = this.antialias ? this.msaaTextureView : canvasTextureView;
+    const outputTextureView = this.antialias
+      ? this.msaaTextureView
+      : canvasTextureView;
 
     const resolveTarget = this.antialias ? canvasTextureView : undefined;
 
@@ -270,7 +272,7 @@ export class Renderer {
           clearValue: [0, 0, 0, 1],
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
-          resolveTarget
+          resolveTarget,
         },
       ],
       depthStencilAttachment: {
@@ -373,7 +375,7 @@ export class Renderer {
 
   public createGeometry<T extends Geometry, O>(
     c: new (renderer: Renderer, o?: O) => T,
-    o?: O
+    o?: O,
   ): T {
     return new c(this, o);
   }

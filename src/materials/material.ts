@@ -4,6 +4,8 @@ import { UniformItem } from "../uniform-utils";
 export abstract class Material {
   protected _uniformManager: UniformManager;
 
+  public topology: GPUPrimitiveTopology = "triangle-list";
+
   constructor(uniformManager?: UniformManager) {
     this._uniformManager = uniformManager;
   }

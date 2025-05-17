@@ -5,11 +5,11 @@ import { Transform } from "./transform";
 import { UniformBufferItem, UniformManager } from "./uniform-manager";
 
 export class Mesh extends Transform {
-  _device: GPUDevice;
-  _uniformManager: UniformManager;
-  _instances: number;
+  private _uniformManager: UniformManager;
+  private _instances: number;
+  private _normalMatrix: Mat3;
 
-  _normalMatrix: Mat3;
+  cullMode: GPUCullMode = "back";
 
   material: Material;
   geometry: Geometry;
@@ -22,7 +22,6 @@ export class Mesh extends Transform {
     buffers?: UniformBufferItem[],
   ) {
     super();
-    this._device = device;
     this.material = mat;
     this.geometry = geo;
     this._instances = instances;
