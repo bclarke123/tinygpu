@@ -45,7 +45,7 @@ export class PerspectiveCamera extends Camera {
   // --- Methods to Update Matrices ---
 
   override updateProjectionMatrix(): void {
-    console.log("Updating Projection Matrix using wgpu-matrix");
+    // console.log("Updating Projection Matrix using wgpu-matrix");
     this._projectionMatrix = mat4.perspective(
       this.fov,
       this.aspect,
@@ -56,7 +56,7 @@ export class PerspectiveCamera extends Camera {
   }
 
   override updateViewMatrix(): void {
-    console.log("Updating View Matrix using wgpu-matrix");
+    // console.log("Updating View Matrix using wgpu-matrix");
     this._viewMatrix = mat4.lookAt(this.position, this.target, this.up);
     this._isViewDirty = false;
   }
