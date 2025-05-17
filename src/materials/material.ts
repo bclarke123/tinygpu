@@ -5,6 +5,7 @@ export abstract class Material {
   protected _uniformManager: UniformManager;
 
   public topology: GPUPrimitiveTopology = "triangle-list";
+  public stripIndexFormat: GPUIndexFormat = undefined;
 
   constructor(uniformManager?: UniformManager) {
     this._uniformManager = uniformManager;
