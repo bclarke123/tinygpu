@@ -39,9 +39,6 @@ export class MappedTexture extends Texture {
       this._texture = device.createTexture(this.descriptor);
     }
   }
-  createView() {
-    this._view = this._texture.createView(this._viewDescriptor);
-  }
   dispose(): void {
     this._texture.destroy();
   }
