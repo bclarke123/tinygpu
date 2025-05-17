@@ -5,10 +5,12 @@ import { UniformManager } from "./uniform-manager";
 import { Light } from "./lights/light";
 import { LightManager } from "./lights/light-manager";
 import { Renderer } from "./renderer";
+import { Skybox } from "./skybox";
 
 export class Scene extends Transform {
     private _uniformManager: UniformManager;
     private _lightManager: LightManager;
+    private _skybox: Skybox;
 
     constructor(renderer: Renderer) {
         super();
@@ -32,6 +34,18 @@ export class Scene extends Transform {
                 },
             ],
         });
+    }
+
+    set skybox(value: Skybox) {
+        this._skybox = value;
+    }
+
+    override traverse(fn: (obj: Transform) => void) {
+        if (this._skybox) {
+            fn(this._skybox.mesh);
+        }
+
+        super.traverse(fn);
     }
 
     update(camera: Camera, resolution: Vec2) {
