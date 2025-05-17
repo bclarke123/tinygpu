@@ -11,6 +11,9 @@ export class Mesh extends Transform {
 
   cullMode: GPUCullMode = "back";
 
+  depthWriteEnabled: boolean = true;
+  depthCompare: GPUCompareFunction = "less";
+
   material: Material;
   geometry: Geometry;
 
@@ -41,7 +44,7 @@ export class Mesh extends Transform {
   }
 
   get cacheKey(): string {
-    return `${this.geometry.cacheKey}-${this.material.cacheKey}-${this._uniformManager.cacheKey}`;
+    return `${this.geometry.cacheKey}-${this.material.cacheKey}-${this._uniformManager.cacheKey}-${this.depthWriteEnabled}-${this.depthCompare}`;
   }
 
   update() {
