@@ -42,15 +42,17 @@
                     "./cubemap/negy.webp",
                     "./cubemap/posz.webp",
                     "./cubemap/negz.webp",
+                    true
                 );
 
                 scene.background = cubemap;
+                scene.environment = cubemap;
 
                 const createMesh = (geoType, shininess) => {
                     const geo = renderer.createGeometry(geoType);
                     const mat = renderer.createMaterial(
                         tinygpu.material.BlinnPhongMaterial,
-                        { shininess },
+                        { shininess, reflectivity: 0.7 },
                     );
                     const mesh = renderer.createMesh(geo, mat);
                     return mesh;
@@ -86,7 +88,7 @@
                 const parent = new tinygpu.Transform();
                 scene.add(parent);
 
-                const cube = createMesh(tinygpu.geometry.CubeGeometry, 100.0);
+                const cube = createMesh(tinygpu.geometry.CubeGeometry, 10.0);
                 cube.setPosition(
                     Math.cos(third) * radius,
                     0,
@@ -96,7 +98,7 @@
 
                 const tet = createMesh(
                     tinygpu.geometry.TetrahedronGeometry,
-                    200.0,
+                    50.0,
                 );
                 tet.setPosition(
                     Math.cos(third * 2) * radius,
