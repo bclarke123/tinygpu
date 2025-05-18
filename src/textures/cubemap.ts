@@ -36,7 +36,7 @@ export class Cubemap {
                     @group(0) @binding(0) var previousMipSampler: sampler;
                     @group(0) @binding(1) var previousMipTexture: texture_2d<f32>;
                     @group(0) @binding(2) var currentMipTexture: texture_storage_2d<rgba8unorm, write>;
-    
+
                     @compute @workgroup_size(8, 8, 1)
                     fn generate_mipmap(
                         @builtin(global_invocation_id) global_id: vec3<u32>
@@ -102,9 +102,14 @@ export class Cubemap {
             const nextWidth = Math.max(1, Math.floor(currentWidth / 2));
             const nextHeight = Math.max(1, Math.floor(currentHeight / 2));
 
-            console.log(`Generating ${nextWidth}x${nextHeight}`);
+            // console.log(`Generating ${nextWidth}x${nextHeight}`);
 
             for (let layer = 0; layer < 6; layer++) { // For each face of the cubemap
+
+                // console.log(`Generating Mip ${mipLevel}, Face ${layer}: ` +
+                //     `Reading from Mip ${prevMipLevel}, ` +
+                //     `Output Size: ${nextWidth}x${nextHeight}`);
+
                 const sourceTextureItem: UniformTextureItem = {
                     texture: cubemapWrapper, // Pass your Texture wrapper
                     accessType: "sample", // Implies read-only for sampling
