@@ -10,115 +10,121 @@ import { Cubemap } from "./textures";
 import { Color } from "./color";
 
 export class Scene extends Transform {
-    private _uniformManager: UniformManager;
-    private _lightManager: LightManager;
-    private _skybox: Skybox;
-    private _cubemap: Cubemap;
+  private _uniformManager: UniformManager;
+  private _lightManager: LightManager;
+  private _skybox: Skybox;
+  private _cubemap: Cubemap;
 
-    constructor(renderer: Renderer, cubemap?: Cubemap) {
-        super();
+  constructor(renderer: Renderer) {
+    super();
 
-        this._lightManager = new LightManager(renderer);
+    this._lightManager = new LightManager(renderer);
 
-        this._cubemap = Cubemap.default(renderer, new Color(1, 1, 0));
-        this._skybox = new Skybox(renderer);
+    this._cubemap = Cubemap.default(renderer, new Color(0, 0, 0));
+    this._skybox = new Skybox(renderer);
 
-        console.log(cubemap, this._cubemap)
+    this._uniformManager = new UniformManager(renderer.device, {
+      uniforms: [
+        { name: "projection matrix", value: mat4.create() },
+        { name: "view matrix", value: mat4.create() },
+        { name: "camera position", value: vec3.create() },
+        { name: "resolution", value: vec2.create(1, 1) },
+        { name: "time", value: performance.now() / 1000 },
+        { name: "numLights", value: this._lightManager.numLights, type: "u32" },
+      ],
+      buffers: [
+        {
+          buffer: this._lightManager.buffer,
+          type: "read-only-storage",
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        },
+      ],
+      samplers: [
+        {
+          type: "filtering",
+          sampler: renderer.createSampler({
+            mipmapFilter: "nearest",
+            magFilter: "linear",
+            minFilter: "linear",
+          }),
+        },
+      ],
+      textures: [
+        {
+          texture: this._cubemap.cubemapTexture,
+          accessType: "sample",
+          visibility: GPUShaderStage.FRAGMENT,
+          dimension: "cube",
+        },
+      ],
+    });
+  }
 
-        this._uniformManager = new UniformManager(renderer.device, {
-            uniforms: [
-                { name: "projection matrix", value: mat4.create() },
-                { name: "view matrix", value: mat4.create() },
-                { name: "camera position", value: vec3.create() },
-                { name: "resolution", value: vec2.create(1, 1) },
-                { name: "time", value: performance.now() / 1000 },
-                { name: "numLights", value: this._lightManager.numLights, type: "u32" },
-            ],
-            buffers: [
-                {
-                    buffer: this._lightManager.buffer,
-                    type: "read-only-storage",
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                },
-            ],
-            samplers: [
-                {
-                    type: "filtering",
-                    sampler: renderer.createSampler({
-                        mipmapFilter: "nearest",
-                        magFilter: "linear",
-                        minFilter: "linear",
-                    }),
-                },
-            ],
-            textures: [
-                {
-                    texture: this._cubemap.cubemapTexture,
-                    accessType: "sample",
-                    visibility: GPUShaderStage.FRAGMENT,
-                    dimension: "cube"
-                }
-            ]
-        });
+  set cubemap(value: Cubemap) {
+    this._cubemap = value;
+    this._uniformManager.updateTextures([
+      {
+        texture: this._cubemap.cubemapTexture,
+        accessType: "sample",
+        visibility: GPUShaderStage.FRAGMENT,
+        dimension: "cube",
+      },
+    ]);
+  }
+
+  override traverse(fn: (obj: Transform) => void) {
+    if (this._skybox) {
+      fn(this._skybox.mesh);
     }
 
-    set cubemap(value: Cubemap) {
-        this._cubemap = value;
-    }
+    super.traverse(fn);
+  }
 
-    override traverse(fn: (obj: Transform) => void) {
-        if (this._skybox) {
-            fn(this._skybox.mesh);
-        }
+  update(camera: Camera, resolution: Vec2) {
+    this.updateLights();
 
-        super.traverse(fn);
-    }
+    this._uniformManager.updateUniform({
+      name: "projection matrix",
+      value: camera.projectionMatrix,
+    });
+    this._uniformManager.updateUniform({
+      name: "view matrix",
+      value: camera.viewMatrix,
+    });
+    this._uniformManager.updateUniform({
+      name: "camera position",
+      value: camera.position,
+    });
+    this._uniformManager.updateUniform({
+      name: "resolution",
+      value: resolution,
+    });
+    this._uniformManager.updateUniform({
+      name: "time",
+      value: performance.now() / 1000,
+    });
+    this._uniformManager.updateUniform({
+      name: "numLights",
+      value: this._lightManager.numLights,
+    });
 
-    update(camera: Camera, resolution: Vec2) {
-        this.updateLights();
+    this._uniformManager.update();
+  }
 
-        this._uniformManager.updateUniform({
-            name: "projection matrix",
-            value: camera.projectionMatrix,
-        });
-        this._uniformManager.updateUniform({
-            name: "view matrix",
-            value: camera.viewMatrix,
-        });
-        this._uniformManager.updateUniform({
-            name: "camera position",
-            value: camera.position,
-        });
-        this._uniformManager.updateUniform({
-            name: "resolution",
-            value: resolution,
-        });
-        this._uniformManager.updateUniform({
-            name: "time",
-            value: performance.now() / 1000,
-        });
-        this._uniformManager.updateUniform({
-            name: "numLights",
-            value: this._lightManager.numLights,
-        });
+  get bindGroupLayout() {
+    return this._uniformManager.bindGroupLayout;
+  }
 
-        this._uniformManager.update();
-    }
+  get bindGroup() {
+    return this._uniformManager.bindGroup;
+  }
 
-    get bindGroupLayout() {
-        return this._uniformManager.bindGroupLayout;
-    }
-
-    get bindGroup() {
-        return this._uniformManager.bindGroup;
-    }
-
-    updateLights() {
-        this.traverse((x) => {
-            if (x instanceof Light) {
-                this._lightManager.addLight(x);
-            }
-        });
-        this._lightManager.clean();
-    }
+  updateLights() {
+    this.traverse((x) => {
+      if (x instanceof Light) {
+        this._lightManager.addLight(x);
+      }
+    });
+    this._lightManager.clean();
+  }
 }
