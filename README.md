@@ -2,6 +2,8 @@
 
 A lightweight WebGPU rendering library designed for ease of use and modern graphics development. It provides a simple API for creating scenes, managing cameras, and rendering 3D objects with materials and textures.
 
+<img width="1062" alt="Screenshot 2025-05-18 at 5 59 44 PM" src="https://github.com/user-attachments/assets/f38f3e3e-eb73-4f7f-851a-34f0a13ed0a9" />
+
 ## Usage Example
 
 Here's a basic example of how to set up a scene, create a cube, and render it:
