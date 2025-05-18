@@ -12,6 +12,7 @@ export interface BlinnPhongMaterialOptions {
   diffuseColor?: Color;
   specularColor?: Color;
   shininess?: number;
+  reflectivity?: number;
 }
 
 export class BlinnPhongMaterial extends Material {
@@ -20,6 +21,7 @@ export class BlinnPhongMaterial extends Material {
   public diffuseColor: Color;
   public specularColor: Color;
   public shininess: number;
+  public reflectivity: number;
 
   private _device: GPUDevice;
 
@@ -29,6 +31,7 @@ export class BlinnPhongMaterial extends Material {
     const specularColor =
       options.specularColor || new Color(1.0, 1.0, 1.0);
     const shininess = options.shininess || 32.0;
+    const reflectivity = options.reflectivity || 0.0;
 
     // console.log("B-P", options);
 
@@ -37,6 +40,7 @@ export class BlinnPhongMaterial extends Material {
       { name: "diffuse_color", value: diffuseColor, type: "color" },
       { name: "specular_color", value: specularColor, type: "color" },
       { name: "shininess", value: shininess, type: "f32" },
+      { name: "reflectivity", value: shininess, type: "f32" },
     ];
 
     // Create a UniformManager instance specifically for this material's uniforms
@@ -53,6 +57,7 @@ export class BlinnPhongMaterial extends Material {
     this.diffuseColor = diffuseColor;
     this.specularColor = specularColor;
     this.shininess = shininess;
+    this.reflectivity = reflectivity;
   }
 
   // Implement abstract members from Material base class
@@ -85,6 +90,10 @@ export class BlinnPhongMaterial extends Material {
     this._uniformManager.updateUniform({
       name: "shininess",
       value: this.shininess,
+    });
+    this._uniformManager.updateUniform({
+      name: "reflectivity",
+      value: this.reflectivity,
     });
 
     super.update(); // Calls this._uniformManager.update()
