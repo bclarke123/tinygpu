@@ -82,7 +82,7 @@ export class Cubemap {
         mipLevelCount: number
     ) {
 
-        console.log(`Generating ${mipLevelCount} mip levels`);
+        // console.log(`Generating ${mipLevelCount} mip levels`);
 
         const device = renderer.device;
         const mipmapShader = Cubemap.getMipmapComputeShader(device);
