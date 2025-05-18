@@ -48,7 +48,7 @@
                 scene.background = cubemap;
                 scene.environment = cubemap;
 
-                const createMesh = (geoType, shininess) => {
+                const createMesh = (geoType, shininess, reflectivity = 0.7) => {
                     const geo = renderer.createGeometry(geoType, { useSmoothNormals: false });
                     const mat = renderer.createMaterial(
                         tinygpu.material.BlinnPhongMaterial,
@@ -57,7 +57,9 @@
                             ambientColor: new tinygpu.Color(1, 1, 1),
                             specularColor: new tinygpu.Color(1, 1, 1),
                             shininess,
-                            reflectivity: 0.8
+                            reflectivity,
+                            metalness: 1.0,
+                            envMapIntensity: 1.0
                         },
                     );
                     const mesh = renderer.createMesh(geo, mat);
@@ -94,7 +96,7 @@
                 const parent = new tinygpu.Transform();
                 scene.add(parent);
 
-                const cube = createMesh(tinygpu.geometry.CubeGeometry, 1.0);
+                const cube = createMesh(tinygpu.geometry.CubeGeometry, 10.0, 0.3);
                 cube.setPosition(
                     Math.cos(third) * radius,
                     0,
@@ -105,6 +107,7 @@
                 const tet = createMesh(
                     tinygpu.geometry.TetrahedronGeometry,
                     50.0,
+                    0.6
                 );
                 tet.setPosition(
                     Math.cos(third * 2) * radius,
@@ -130,10 +133,10 @@
 
                 // const directional = new tinygpu.lights.Light({
                 //     type: tinygpu.lights.LightType.Directional,
-                //     intensity: 1,
+                //     intensity: 0.5,
                 //     color: new tinygpu.Color(1, 1, 1),
                 // });
-                // directional.setPosition(-5, 5, 0);
+
                 // directional.setRotation(Math.PI * -0.4, Math.PI * -0.25, 0);
                 // scene.add(directional);
 
