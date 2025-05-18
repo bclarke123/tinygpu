@@ -1,4 +1,4 @@
-import { Texture } from "./texture";
+import { Texture } from "./textures";
 import { packUniforms, UniformItem, uploadUniformBuffer } from "./uniform-utils";
 
 export interface UniformBufferAttribute {
@@ -157,13 +157,13 @@ export class UniformManager {
         }
 
         if (this._texturesDirty) {
-            (this._textures || []).forEach((t) => t.texture.upload(this._device));
+            this._bindGroup = undefined;
             this._texturesDirty = false;
         }
 
         if (this._buffersDirty) {
             this._bindGroup = undefined;
-            this._bindGroupLayout = undefined;
+            this._buffersDirty = false;
         }
     }
 
@@ -315,9 +315,11 @@ export class UniformManager {
         if (_textures?.length > 0) {
             for (let i = 0; i < _textures?.length; i++) {
                 entries.push({
-                    binding: i + binding,
+                    binding,
                     resource: _textures[i].texture.view,
                 });
+
+                binding++;
             }
         }
 
