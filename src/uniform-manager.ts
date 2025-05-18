@@ -21,6 +21,7 @@ export interface UniformTextureItem {
     visibility?: GPUShaderStageFlags;
     format?: GPUTextureFormat;
     dimension?: GPUTextureViewDimension;
+    viewDescriptor?: GPUTextureViewDescriptor;
 }
 
 export interface UniformSamplerItem {
@@ -316,7 +317,7 @@ export class UniformManager {
             for (let i = 0; i < _textures?.length; i++) {
                 entries.push({
                     binding,
-                    resource: _textures[i].texture.view,
+                    resource: _textures[i].texture.getView(_textures[i].viewDescriptor),
                 });
 
                 binding++;
