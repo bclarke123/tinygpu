@@ -38,6 +38,8 @@ struct BlinnPhongMaterialParams {
   specular_color: vec4<f32>,  // Ks - Color of direct specular highlights
   shininess: f32,             // Alpha_s - Controls direct highlight size/sharpness
   reflectivity: f32,          // Controls strength of environmental reflections (0.0 to 1.0)
+  env_map_intensity: f32,
+  metalness: f32,
 };
 
 @group(BG_UNIFORMS) @binding(0) var<uniform> material_params: BlinnPhongMaterialParams;
@@ -167,7 +169,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let diffuse_ibl_contribution = diffuse_ibl_raw * base_diffuse_albedo;
     // Adjust intensity: This factor helps balance IBL with direct lights if using raw cubemap.
     // Consider making this a scene uniform or material param if more control is needed.
-    let diffuse_ibl_intensity_factor = 1.0;
+    let diffuse_ibl_intensity_factor = material_params.env_map_intensity;
 
     // 2. Specular IBL (Reflections from Environment)
     let R: vec3<f32> = reflect(-V, N); // Reflection vector
@@ -201,7 +203,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     // material_params.reflectivity strongly implies metallic properties.
     // var F0: vec3<f32> = vec3<f32>(0.04); // Default for non-metals (e.g., plastic, water)
     // If you want to treat high reflectivity as more metallic for Fresnel:
-    let F0 = mix(vec3<f32>(0.04), base_diffuse_albedo, smoothstep(0.5, 1.0, material_params.reflectivity)); // Example: lerp F0 if highly reflective
+    let F0 = mix(vec3<f32>(0.04), base_diffuse_albedo, smoothstep(0.0, 1.0, material_params.metalness));
 
     let fresnel_schlick: vec3<f32> = F0 + (vec3<f32>(1.0) - F0) * pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 5.0);
 
