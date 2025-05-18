@@ -2,7 +2,7 @@ export abstract class Texture {
   constructor() { }
 
   abstract get descriptor(): GPUTextureDescriptor;
-  abstract get view(): GPUTextureView;
+  abstract getView(descriptor?: GPUTextureViewDescriptor): GPUTextureView;
   abstract upload(device: GPUDevice): void;
   abstract dispose(): void;
   abstract get width(): number;
@@ -15,24 +15,17 @@ export abstract class Texture {
 
 export class MappedTexture extends Texture {
   private _descriptor: GPUTextureDescriptor;
-  private _view: GPUTextureView;
   private _texture: GPUTexture;
 
-  private _viewDescriptor: GPUTextureViewDescriptor;
-
-  constructor(descriptor: GPUTextureDescriptor, viewDescriptor?: GPUTextureViewDescriptor) {
+  constructor(descriptor: GPUTextureDescriptor) {
     super();
     this._descriptor = descriptor;
-    this._viewDescriptor = viewDescriptor;
   }
   get descriptor(): GPUTextureDescriptor {
     return this._descriptor;
   }
-  get view(): GPUTextureView {
-    if (!this._view) {
-      this._view = this._texture.createView(this._viewDescriptor);
-    }
-    return this._view;
+  getView(descriptor?: GPUTextureViewDescriptor): GPUTextureView {
+    return this._texture.createView(descriptor);
   }
   upload(device: GPUDevice): void {
     if (!this._texture) {
@@ -92,13 +85,13 @@ export class DefaultTexture extends Texture {
     };
   }
 
-  get view(): GPUTextureView {
+  getView(descriptor?: GPUTextureViewDescriptor): GPUTextureView {
     if (!this._texture) {
       console.trace();
       throw new Error("Texture not created");
     }
 
-    this._textureView ??= this._texture.createView();
+    this._textureView ??= this._texture.createView(descriptor);
     return this._textureView;
   }
 
@@ -153,7 +146,6 @@ export class ImageTexture extends Texture {
   private _width: number = 0;
   private _height: number = 0;
   private _texture: GPUTexture | null = null;
-  private _textureView: GPUTextureView | null = null;
   private _imagedata: ImageBitmap | null = null;
 
   constructor(imageSrc: string) {
@@ -204,13 +196,12 @@ export class ImageTexture extends Texture {
     };
   }
 
-  get view(): GPUTextureView {
+  getView(descriptor?: GPUTextureViewDescriptor): GPUTextureView {
     if (!this._texture) {
       throw new Error("Texture not created");
     }
 
-    this._textureView ??= this._texture.createView();
-    return this._textureView;
+    return this._texture.createView(descriptor);
   }
 
   get label(): string {
@@ -250,7 +241,6 @@ export class ImageTexture extends Texture {
     this._imagedata?.close();
     this._texture?.destroy();
     this._texture = null;
-    this._textureView = null;
     this._imagedata = null;
     this._width = 0;
     this._height = 0;

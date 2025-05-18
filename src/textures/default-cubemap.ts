@@ -5,7 +5,6 @@ import { Texture } from "./texture"; // Assuming your abstract Texture class is 
 export class DefaultCubemapTexture extends Texture {
   private static _instance: DefaultCubemapTexture;
   private _texture: GPUTexture | null = null;
-  private _view: GPUTextureView | null = null;
   private _pixelData: Uint8Array; // e.g., black or grey
 
   private constructor(
@@ -44,19 +43,13 @@ export class DefaultCubemapTexture extends Texture {
     };
   }
 
-  override get view(): GPUTextureView {
-    if (!this._view) {
-      if (!this._texture) {
-        throw new Error(
-          "DefaultCubemapTexture: GPUTexture not created. Call upload() or ensure device was passed to getInstance().",
-        );
-      }
-      this._view = this._texture.createView({
-        label: "Default_Cubemap_TextureView (cube)",
-        dimension: "cube", // Crucial: view as a cubemap
-      });
+  override getView(descriptor?: GPUTextureViewDescriptor): GPUTextureView {
+    if (!this._texture) {
+      throw new Error(
+        "DefaultCubemapTexture: GPUTexture not created. Call upload() or ensure device was passed to getInstance().",
+      );
     }
-    return this._view;
+    return this._texture.createView(descriptor);
   }
 
   upload(device: GPUDevice): void {
@@ -81,7 +74,6 @@ export class DefaultCubemapTexture extends Texture {
     // Singleton might not be disposed frequently, or managed by renderer shutdown
     this._texture?.destroy();
     this._texture = null;
-    this._view = null; // View is implicitly gone with texture
   }
 
   // Implement other abstract members from Texture
