@@ -3,9 +3,10 @@
 BIND GROUPS:
 
 @group(BG_SCENE) @binding(0) - SceneUniforms
-@group(BG_SCENE) @binding(1) - Skybox Cubemap Sampler
-@group(BG_SCENE) @binding(2) - Skybox Cubemap Texture
-@group(BG_SCENE) @binding(3) - Lights buffer
+@group(BG_SCENE) @binding(1) - Cubemap Sampler
+@group(BG_SCENE) @binding(2) - Environment Cubemap Texture
+@group(BG_SCENE) @binding(3) - Skybox Cubemap Texture
+@group(BG_SCENE) @binding(4) - Lights buffer
 
 @group(BG_MODEL) @binding(0) - ModelUniforms
 

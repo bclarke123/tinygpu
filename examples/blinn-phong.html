@@ -31,7 +31,7 @@
                 const renderer = new tinygpu.Renderer({ canvas });
                 await renderer.init();
 
-                // const scene = renderer.createScene();
+                const scene = renderer.createScene();
                 const camera = renderer.createPerspectiveCamera();
 
                 const cubemap = await tinygpu.textures.Cubemap.createFromFiles(
@@ -44,11 +44,7 @@
                     "./cubemap/negz.webp",
                 );
 
-                const scene = new tinygpu.Scene(renderer, cubemap);
-
-                console.log(cubemap);
-
-                // scene.cubemap = cubemap;
+                scene.background = cubemap;
 
                 const createMesh = (geoType, shininess) => {
                     const geo = renderer.createGeometry(geoType);

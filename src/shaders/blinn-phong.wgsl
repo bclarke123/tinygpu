@@ -54,7 +54,7 @@ struct ShaderLight {
 // Your UniformManager.ts places 'uniforms' (UBO) at binding 0, then samplers, then textures, then 'buffers' (Storage).
 // So if there are no samplers/textures in the Scene's UniformManager, lights buffer is at binding 1.
 //--------------------------------------------------------------------
-@group(BG_SCENE) @binding(3) var<storage, read> lights_array: array<ShaderLight>;
+@group(BG_SCENE) @binding(4) var<storage, read> lights_array: array<ShaderLight>;
 
 
 //--------------------------------------------------------------------

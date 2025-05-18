@@ -1,5 +1,5 @@
 @group(BG_SCENE) @binding(1) var skyboxSampler: sampler;
-@group(BG_SCENE) @binding(2) var skyboxTexture: texture_cube<f32>;
+@group(BG_SCENE) @binding(3) var skyboxTexture: texture_cube<f32>;
 
 struct VSOut {
     @builtin(position) position: vec4<f32>,
