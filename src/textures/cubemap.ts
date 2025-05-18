@@ -1,5 +1,7 @@
+import { Color } from "../color";
 import { Renderer } from "../renderer";
-import { ImageTexture, MappedTexture, Texture } from "../texture";
+import { DefaultCubemapTexture } from "./default-cubemap";
+import { ImageTexture, MappedTexture, Texture } from "./texture";
 
 export class Cubemap {
     posx: ImageTexture;
@@ -13,15 +15,18 @@ export class Cubemap {
 
     cubemapTexture: Texture;
 
-    constructor(renderer: Renderer, posx: ImageTexture, negx: ImageTexture, posy: ImageTexture, negy: ImageTexture, posz: ImageTexture, negz: ImageTexture) {
-        this.posx = posx;
-        this.negx = negx;
-        this.posy = posy;
-        this.negy = negy;
-        this.posz = posz;
-        this.negz = negz;
+    private constructor() { }
 
-        this.images = [
+    public static fromImages(renderer: Renderer, posx: ImageTexture, negx: ImageTexture, posy: ImageTexture, negy: ImageTexture, posz: ImageTexture, negz: ImageTexture): Cubemap {
+        const ret = new Cubemap();
+        ret.posx = posx;
+        ret.negx = negx;
+        ret.posy = posy;
+        ret.negy = negy;
+        ret.posz = posz;
+        ret.negz = negz;
+
+        ret.images = [
             posx, negx,
             posy, negy,
             posz, negz
@@ -41,15 +46,28 @@ export class Cubemap {
 
         cubemapTexture.upload(renderer.device);
 
-        this.cubemapTexture = cubemapTexture;
+        ret.cubemapTexture = cubemapTexture;
 
-        this.images.forEach((im, layer) => {
+        ret.images.forEach((im, layer) => {
             renderer.device.queue.copyExternalImageToTexture(
                 { source: im.imageData },
-                { texture: this.cubemapTexture.texture, origin: [0, 0, layer] },
+                { texture: ret.cubemapTexture.texture, origin: [0, 0, layer] },
                 { width: im.width, height: im.height }
             );
         });
+
+        return ret;
+    }
+
+    public static fromCubeTexture(tex: Texture): Cubemap {
+        const ret = new Cubemap();
+        ret.cubemapTexture = tex;
+        return ret;
+    }
+
+    public static default(renderer: Renderer, color: Color): Cubemap {
+        const tex = DefaultCubemapTexture.getInstance(renderer.device, color);
+        return this.fromCubeTexture(tex);
     }
 
     static async createFromFiles(renderer: Renderer, posx: string, negx: string, posy: string, negy: string, posz: string, negz: string): Promise<Cubemap> {
@@ -63,6 +81,6 @@ export class Cubemap {
 
         const [tpx, tnx, tpy, tny, tpz, tnz] = images;
 
-        return new Cubemap(renderer, tpx, tnx, tpy, tny, tpz, tnz);
+        return Cubemap.fromImages(renderer, tpx, tnx, tpy, tny, tpz, tnz);
     }
 }

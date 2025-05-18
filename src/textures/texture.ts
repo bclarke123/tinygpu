@@ -94,6 +94,7 @@ export class DefaultTexture extends Texture {
 
   get view(): GPUTextureView {
     if (!this._texture) {
+      console.trace();
       throw new Error("Texture not created");
     }
 
@@ -136,9 +137,16 @@ export class DefaultTexture extends Texture {
     this._texture = null;
     this._textureView = null;
   }
-}
 
-DefaultTexture.instance = new DefaultTexture();
+  private static _instance: DefaultTexture;
+  static getInstance(device: GPUDevice): DefaultTexture {
+    if (!DefaultTexture._instance) {
+      DefaultTexture._instance = new DefaultTexture();
+      DefaultTexture._instance.upload(device);
+    }
+    return DefaultTexture._instance;
+  }
+}
 
 export class ImageTexture extends Texture {
   private src: string;

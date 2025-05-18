@@ -21,6 +21,11 @@ export class Color {
     return this.buffer;
   }
 
+  toPixelData() {
+    const buffer = new Uint8Array([this.r, this.g, this.b, this.a]);
+    return buffer;
+  }
+
   toString() {
     return this.buffer.join(",");
   }
