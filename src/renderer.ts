@@ -13,7 +13,7 @@ import { Material } from "./materials/material";
 import { Mesh } from "./mesh";
 import { Scene } from "./scene";
 import { ComputeTask, ComputeTaskOptions } from "./compute/compute-task";
-import { ImageTexture, MappedTexture } from "./texture";
+import { ImageTexture, MappedTexture } from "./textures";
 import { UniformBufferItem } from "./uniform-manager";
 
 export interface RendererOptions {
