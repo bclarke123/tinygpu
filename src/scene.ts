@@ -1,7 +1,7 @@
 import { Transform } from "./transform";
 import { Camera } from "./camera/camera";
 import { mat4, vec2, Vec2, vec3 } from "wgpu-matrix";
-import { UniformManager } from "./uniform-manager";
+import { UniformManager, UniformTextureItem } from "./uniform-manager";
 import { Light } from "./lights/light";
 import { LightManager } from "./lights/light-manager";
 import { Renderer } from "./renderer";
@@ -47,7 +47,7 @@ export class Scene extends Transform {
         {
           type: "filtering",
           sampler: renderer.createSampler({
-            mipmapFilter: "nearest",
+            mipmapFilter: "linear",
             magFilter: "linear",
             minFilter: "linear",
           }),
@@ -72,38 +72,37 @@ export class Scene extends Transform {
 
   set environment(value: Cubemap) {
     this._environment = value;
-    this._uniformManager.updateTextures([
-      {
-        texture: this._environment.cubemapTexture,
-        accessType: "sample",
-        visibility: GPUShaderStage.FRAGMENT,
-        dimension: "cube",
-      },
-      {
-        texture: this._background.cubemapTexture,
-        accessType: "sample",
-        visibility: GPUShaderStage.FRAGMENT,
-        dimension: "cube",
-      },
-    ]);
+    this._uniformManager.updateTextures(this.textureDescriptors);
   }
 
   set background(value: Cubemap) {
     this._background = value;
-    this._uniformManager.updateTextures([
+    this._uniformManager.updateTextures(this.textureDescriptors);
+  }
+
+  get textureDescriptors(): UniformTextureItem[] {
+    return [
       {
         texture: this._environment.cubemapTexture,
         accessType: "sample",
         visibility: GPUShaderStage.FRAGMENT,
         dimension: "cube",
+        viewDescriptor: {
+          dimension: "cube",
+          mipLevelCount: this._environment.mipLevelCount
+        }
       },
       {
         texture: this._background.cubemapTexture,
         accessType: "sample",
         visibility: GPUShaderStage.FRAGMENT,
         dimension: "cube",
+        viewDescriptor: {
+          dimension: "cube",
+          mipLevelCount: this._background.mipLevelCount
+        }
       },
-    ]);
+    ];
   }
 
   override traverse(fn: (obj: Transform) => void) {
