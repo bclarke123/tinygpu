@@ -6,16 +6,24 @@ import { Light } from "./lights/light";
 import { LightManager } from "./lights/light-manager";
 import { Renderer } from "./renderer";
 import { Skybox } from "./skybox";
+import { Cubemap } from "./textures";
+import { Color } from "./color";
 
 export class Scene extends Transform {
     private _uniformManager: UniformManager;
     private _lightManager: LightManager;
     private _skybox: Skybox;
+    private _cubemap: Cubemap;
 
-    constructor(renderer: Renderer) {
+    constructor(renderer: Renderer, cubemap?: Cubemap) {
         super();
 
         this._lightManager = new LightManager(renderer);
+
+        this._cubemap = Cubemap.default(renderer, new Color(1, 1, 0));
+        this._skybox = new Skybox(renderer);
+
+        console.log(cubemap, this._cubemap)
 
         this._uniformManager = new UniformManager(renderer.device, {
             uniforms: [
@@ -33,11 +41,29 @@ export class Scene extends Transform {
                     visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
                 },
             ],
+            samplers: [
+                {
+                    type: "filtering",
+                    sampler: renderer.createSampler({
+                        mipmapFilter: "nearest",
+                        magFilter: "linear",
+                        minFilter: "linear",
+                    }),
+                },
+            ],
+            textures: [
+                {
+                    texture: this._cubemap.cubemapTexture,
+                    accessType: "sample",
+                    visibility: GPUShaderStage.FRAGMENT,
+                    dimension: "cube"
+                }
+            ]
         });
     }
 
-    set skybox(value: Skybox) {
-        this._skybox = value;
+    set cubemap(value: Cubemap) {
+        this._cubemap = value;
     }
 
     override traverse(fn: (obj: Transform) => void) {

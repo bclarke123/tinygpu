@@ -1,3 +1,18 @@
+/**
+
+BIND GROUPS:
+
+@group(BG_SCENE) @binding(0) - SceneUniforms
+@group(BG_SCENE) @binding(1) - Skybox Cubemap Sampler
+@group(BG_SCENE) @binding(2) - Skybox Cubemap Texture
+@group(BG_SCENE) @binding(3) - Lights buffer
+
+@group(BG_MODEL) @binding(0) - ModelUniforms
+
+@group(BG_UNIFORMS) - material uniforms, samplers, textures, buffers in that order
+
+**/
+
 const BG_SCENE: u32 = 0;
 const BG_MODEL: u32 = 1;
 const BG_UNIFORMS: u32 = 2;
