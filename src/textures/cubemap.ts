@@ -1,6 +1,6 @@
 import { vec3 } from "wgpu-matrix";
 import { Color } from "../color";
-import { ComputeTask, ComputeTaskOptions } from "../compute/compute-task";
+import { ComputeTaskOptions } from "../compute/compute-task";
 import { Renderer } from "../renderer";
 import { UniformSamplerItem, UniformTextureItem } from "../uniform-manager";
 import { DefaultCubemapTexture } from "./default-cubemap";
@@ -83,6 +83,7 @@ export class Cubemap {
     ) {
 
         // console.log(`Generating ${mipLevelCount} mip levels`);
+        // const now = performance.now();
 
         const device = renderer.device;
         const mipmapShader = Cubemap.getMipmapComputeShader(device);
@@ -157,6 +158,8 @@ export class Cubemap {
             currentWidth = nextWidth;
             currentHeight = nextHeight;
         }
+
+        // console.log(`Generated ${mipLevelCount} mipmaps in ${(performance.now() - now).toFixed(2)}ms`);
     }
 
     public static fromImages(renderer: Renderer, posx: ImageTexture, negx: ImageTexture, posy: ImageTexture, negy: ImageTexture, posz: ImageTexture, negz: ImageTexture, generateMipmaps: boolean = false): Cubemap {
