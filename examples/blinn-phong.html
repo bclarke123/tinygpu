@@ -49,10 +49,16 @@
                 scene.environment = cubemap;
 
                 const createMesh = (geoType, shininess) => {
-                    const geo = renderer.createGeometry(geoType);
+                    const geo = renderer.createGeometry(geoType, { useSmoothNormals: false });
                     const mat = renderer.createMaterial(
                         tinygpu.material.BlinnPhongMaterial,
-                        { shininess, reflectivity: 0.7 },
+                        { 
+                            diffuseColor: new tinygpu.Color(1, 1, 1), 
+                            ambientColor: new tinygpu.Color(1, 1, 1),
+                            specularColor: new tinygpu.Color(1, 1, 1),
+                            shininess,
+                            reflectivity: 0.8
+                        },
                     );
                     const mesh = renderer.createMesh(geo, mat);
                     return mesh;
@@ -88,7 +94,7 @@
                 const parent = new tinygpu.Transform();
                 scene.add(parent);
 
-                const cube = createMesh(tinygpu.geometry.CubeGeometry, 10.0);
+                const cube = createMesh(tinygpu.geometry.CubeGeometry, 1.0);
                 cube.setPosition(
                     Math.cos(third) * radius,
                     0,
@@ -118,25 +124,25 @@
                 );
                 parent.add(sphere);
 
-                createLight([3, 0, 0], new tinygpu.Color(0.0, 0.2, 1.0));
-                createLight([-3, 0, 0], new tinygpu.Color(0.8, 0.2, 0.4));
-                createLight([0, -3, 0], new tinygpu.Color(0.2, 0.8, 0.4));
+                // createLight([3, 0, 0], new tinygpu.Color(0.0, 0.2, 1.0));
+                // createLight([-3, 0, 0], new tinygpu.Color(0.8, 0.2, 0.4));
+                // createLight([0, -3, 0], new tinygpu.Color(0.2, 0.8, 0.4));
 
-                const directional = new tinygpu.lights.Light({
-                    type: tinygpu.lights.LightType.Directional,
-                    intensity: 1,
-                    color: new tinygpu.Color(1, 1, 1),
-                });
-                directional.setPosition(-5, 5, 0);
-                directional.setRotation(Math.PI * -0.4, Math.PI * -0.25, 0);
-                scene.add(directional);
+                // const directional = new tinygpu.lights.Light({
+                //     type: tinygpu.lights.LightType.Directional,
+                //     intensity: 1,
+                //     color: new tinygpu.Color(1, 1, 1),
+                // });
+                // directional.setPosition(-5, 5, 0);
+                // directional.setRotation(Math.PI * -0.4, Math.PI * -0.25, 0);
+                // scene.add(directional);
 
-                const ambient = new tinygpu.lights.Light({
-                    type: tinygpu.lights.LightType.Ambient,
-                    color: new tinygpu.Color(1.0, 1.0, 1.0),
-                    intensity: 2.0,
-                });
-                scene.add(ambient);
+                // const ambient = new tinygpu.lights.Light({
+                //     type: tinygpu.lights.LightType.Ambient,
+                //     color: new tinygpu.Color(1.0, 1.0, 1.0),
+                //     intensity: 2.0,
+                // });
+                // scene.add(ambient);
 
                 const animate = () => {
                     const now = performance.now() / 1000;
