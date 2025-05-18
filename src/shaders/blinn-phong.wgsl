@@ -159,7 +159,10 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     // 1. Diffuse IBL (Ambient from Environment)
     // Ideally, environment_map_texture for this purpose would be a pre-filtered irradiance map.
     // Sampling the raw skybox cubemap with N gives a basic environmental ambient.
-    let diffuse_ibl_raw = textureSample(environment_map_texture, environment_map_sampler, N).rgb;
+    let num_mips_for_diffuse = f32(textureNumLevels(environment_map_texture));
+    let diffuse_lod = max(0.0, num_mips_for_diffuse - 1.0); // Sample the smallest mip (most blurred)
+    // Or a fixed high LOD if you prefer, e.g., let diffuse_lod = 4.0;
+    let diffuse_ibl_raw = textureSampleLevel(environment_map_texture, environment_map_sampler, N, diffuse_lod).rgb;
     // Modulate by the material's diffuse color (albedo)
     let diffuse_ibl_contribution = diffuse_ibl_raw * base_diffuse_albedo;
     // Adjust intensity: This factor helps balance IBL with direct lights if using raw cubemap.
@@ -175,7 +178,8 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     // textureNumLevels() returns the total number of mip levels (e.g., 10 for a 512px texture).
     // Mip levels are 0-indexed (0 is largest, numLevels-1 is smallest 1x1).
     let num_mip_levels = f32(textureNumLevels(environment_map_texture)); // Get actual number of mips
-    let mip_level_to_sample = 6.0; //roughness * (num_mip_levels - 1.0);
+    let mip_level_to_sample = roughness * (num_mip_levels - 1.0);
+    // let mip_level_to_sample = 8.0;
     // mip_level_to_sample will be a float. The 'linear' mipmapFilter in the sampler will handle interpolation.
 
     // DEBUG: Output mip_level_to_sample scaled to be visible
