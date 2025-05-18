@@ -22,7 +22,12 @@ export class Color {
   }
 
   toPixelData() {
-    const buffer = new Uint8Array([this.r, this.g, this.b, this.a]);
+    const buffer = new Uint8Array([
+      this.r * 255,
+      this.g * 255,
+      this.b * 255,
+      this.a * 255,
+    ]);
     return buffer;
   }
 
