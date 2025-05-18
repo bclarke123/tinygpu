@@ -53,20 +53,7 @@ export class Scene extends Transform {
           }),
         },
       ],
-      textures: [
-        {
-          texture: this._environment.cubemapTexture,
-          accessType: "sample",
-          visibility: GPUShaderStage.FRAGMENT,
-          dimension: "cube",
-        },
-        {
-          texture: this._background.cubemapTexture,
-          accessType: "sample",
-          visibility: GPUShaderStage.FRAGMENT,
-          dimension: "cube",
-        },
-      ],
+      textures: this.textureDescriptors,
     });
   }
 
