@@ -1,5 +1,5 @@
 import { Color } from "../color";
-import { DefaultTexture, Texture } from "../texture";
+import { DefaultTexture, Texture } from "../textures";
 import { Material } from "./material";
 import { UniformManager } from "../uniform-manager";
 
@@ -26,7 +26,7 @@ export class BasicMaterial extends Material {
         ],
         textures: [
           {
-            texture: options.map || DefaultTexture.instance,
+            texture: options.map || DefaultTexture.getInstance(device),
             dimension: "2d",
             accessType: "sample"
           }

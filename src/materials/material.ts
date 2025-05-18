@@ -1,4 +1,5 @@
-import { UniformManager } from "../uniform-manager";
+import { Texture } from "../textures";
+import { UniformManager, UniformTextureItem } from "../uniform-manager";
 import { UniformItem } from "../uniform-utils";
 
 export abstract class Material {
@@ -24,6 +25,10 @@ export abstract class Material {
 
   updateUniform(uniform: UniformItem) {
     this._uniformManager.updateUniform(uniform);
+  }
+
+  updateTextures(textures: UniformTextureItem[]) {
+    this._uniformManager.updateTextures(textures);
   }
 
   update() {
