@@ -13,14 +13,18 @@ export class Scene extends Transform {
   private _uniformManager: UniformManager;
   private _lightManager: LightManager;
   private _skybox: Skybox;
-  private _cubemap: Cubemap;
+  private _background: Cubemap;
+  private _environment: Cubemap;
 
   constructor(renderer: Renderer) {
     super();
 
     this._lightManager = new LightManager(renderer);
 
-    this._cubemap = Cubemap.default(renderer, new Color(0, 0, 0));
+    this._environment = this._background = Cubemap.default(
+      renderer,
+      new Color(0, 0, 0),
+    );
     this._skybox = new Skybox(renderer);
 
     this._uniformManager = new UniformManager(renderer.device, {
@@ -51,7 +55,13 @@ export class Scene extends Transform {
       ],
       textures: [
         {
-          texture: this._cubemap.cubemapTexture,
+          texture: this._environment.cubemapTexture,
+          accessType: "sample",
+          visibility: GPUShaderStage.FRAGMENT,
+          dimension: "cube",
+        },
+        {
+          texture: this._background.cubemapTexture,
           accessType: "sample",
           visibility: GPUShaderStage.FRAGMENT,
           dimension: "cube",
@@ -60,11 +70,35 @@ export class Scene extends Transform {
     });
   }
 
-  set cubemap(value: Cubemap) {
-    this._cubemap = value;
+  set environment(value: Cubemap) {
+    this._environment = value;
     this._uniformManager.updateTextures([
       {
-        texture: this._cubemap.cubemapTexture,
+        texture: this._environment.cubemapTexture,
+        accessType: "sample",
+        visibility: GPUShaderStage.FRAGMENT,
+        dimension: "cube",
+      },
+      {
+        texture: this._background.cubemapTexture,
+        accessType: "sample",
+        visibility: GPUShaderStage.FRAGMENT,
+        dimension: "cube",
+      },
+    ]);
+  }
+
+  set background(value: Cubemap) {
+    this._background = value;
+    this._uniformManager.updateTextures([
+      {
+        texture: this._environment.cubemapTexture,
+        accessType: "sample",
+        visibility: GPUShaderStage.FRAGMENT,
+        dimension: "cube",
+      },
+      {
+        texture: this._background.cubemapTexture,
         accessType: "sample",
         visibility: GPUShaderStage.FRAGMENT,
         dimension: "cube",
