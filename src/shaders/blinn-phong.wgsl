@@ -172,7 +172,8 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let diffuse_ibl_intensity_factor = material_params.env_map_intensity;
 
     // 2. Specular IBL (Reflections from Environment)
-    let R: vec3<f32> = reflect(-V, N); // Reflection vector
+    let R: vec3<f32> = reflect(-V, N) * vec3(-1.0, 1.0, 1.0); // Reflection vector
+
     let clamped_shininess = max(1.0, material_params.shininess);
     let roughness = sqrt(2.0 / (clamped_shininess + 2.0)); // Ranges roughly 0 to 1.4, but effectively 0 to 1 for useful shininess
 
