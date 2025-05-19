@@ -94,24 +94,18 @@ export class Transform {
 
   // --- Setters for Local Components (Mark Dirty) ---
   set position(value: Vec3) {
-    if (!vec3.equals(this._position, value)) {
-      this._position = vec3.copy(value, this._position);
-      this.makeDirty();
-    }
+    this._position = vec3.copy(value, this._position);
+    this.makeDirty();
   }
 
   set quaternion(value: Quat) {
-    if (!quat.equals(this._rotation, value)) {
-      this._rotation = quat.copy(value, this._rotation);
-      this.makeDirty();
-    }
+    this._rotation = quat.copy(value, this._rotation);
+    this.makeDirty();
   }
 
   set scale(value: Vec3) {
-    if (!vec3.equals(this._scale, value)) {
-      this._scale = vec3.copy(value, this._scale);
-      this.makeDirty();
-    }
+    this._scale = vec3.copy(value, this._scale);
+    this.makeDirty();
   }
 
   setPosition(x: number, y: number, z: number) {
