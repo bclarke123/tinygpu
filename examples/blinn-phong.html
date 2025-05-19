@@ -34,6 +34,8 @@
                 const scene = renderer.createScene();
                 const camera = renderer.createPerspectiveCamera();
 
+                const controls = new tinygpu.OrbitControls(camera, canvas);
+
                 const cubemap = await tinygpu.textures.Cubemap.createFromFiles(
                     renderer,
                     "./cubemap/posx.webp",
@@ -42,24 +44,26 @@
                     "./cubemap/negy.webp",
                     "./cubemap/posz.webp",
                     "./cubemap/negz.webp",
-                    true
+                    true,
                 );
 
                 scene.background = cubemap;
                 scene.environment = cubemap;
 
                 const createMesh = (geoType, shininess, reflectivity = 0.7) => {
-                    const geo = renderer.createGeometry(geoType, { useSmoothNormals: false });
+                    const geo = renderer.createGeometry(geoType, {
+                        useSmoothNormals: false,
+                    });
                     const mat = renderer.createMaterial(
                         tinygpu.material.BlinnPhongMaterial,
-                        { 
-                            diffuseColor: new tinygpu.Color(1, 1, 1), 
+                        {
+                            diffuseColor: new tinygpu.Color(1, 1, 1),
                             ambientColor: new tinygpu.Color(1, 1, 1),
                             specularColor: new tinygpu.Color(1, 1, 1),
                             shininess,
                             reflectivity,
                             metalness: 1.0,
-                            envMapIntensity: 1.0
+                            envMapIntensity: 1.0,
                         },
                     );
                     const mesh = renderer.createMesh(geo, mat);
@@ -96,7 +100,11 @@
                 const parent = new tinygpu.Transform();
                 scene.add(parent);
 
-                const cube = createMesh(tinygpu.geometry.CubeGeometry, 10.0, 0.3);
+                const cube = createMesh(
+                    tinygpu.geometry.CubeGeometry,
+                    10.0,
+                    0.3,
+                );
                 cube.setPosition(
                     Math.cos(third) * radius,
                     0,
@@ -107,7 +115,7 @@
                 const tet = createMesh(
                     tinygpu.geometry.TetrahedronGeometry,
                     50.0,
-                    0.6
+                    0.6,
                 );
                 tet.setPosition(
                     Math.cos(third * 2) * radius,
@@ -150,15 +158,18 @@
                 const animate = () => {
                     const now = performance.now() / 1000;
 
-                    const cr = 10.0;
-                    camera.setPosition(
-                        Math.cos(now * 0.2) * cr,
-                        0,
-                        Math.sin(now * 0.2) * cr,
-                    );
-                    camera.setTarget([0, 0, 0]);
+                    // const cr = 10.0;
+                    // camera.setPosition(
+                    //     Math.cos(now * 0.2) * cr,
+                    //     0,
+                    //     Math.sin(now * 0.2) * cr,
+                    // );
+                    // camera.setTarget([0, 0, 0]);
 
                     parent.setRotation(0, now * 0.5, now * 0.2);
+
+                    controls.update();
+
                     renderer.render(scene, camera);
                     requestAnimationFrame(animate);
                 };
