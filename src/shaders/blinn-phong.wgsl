@@ -43,9 +43,8 @@ struct BlinnPhongMaterialParams {
 };
 
 @group(BG_UNIFORMS) @binding(0) var<uniform> material_params: BlinnPhongMaterialParams;
-// Optional: Texture for diffuse color
-// @group(BG_UNIFORMS) @binding(1) var material_sampler: sampler;
-// @group(BG_UNIFORMS) @binding(2) var diffuse_texture: texture_2d<f32>;
+@group(BG_UNIFORMS) @binding(1) var material_sampler: sampler;
+@group(BG_UNIFORMS) @binding(2) var diffuse_texture: texture_2d<f32>;
 
 //--------------------------------------------------------------------
 // Vertex Shader Output (VSOut)
@@ -83,18 +82,16 @@ fn safe_normalize(v: vec3<f32>) -> vec3<f32> {
 }
 
 //--------------------------------------------------------------------
-// Fragment Shader (fs_main) - MODIFIED for IBL
+// Fragment Shader (fs_main)
 //--------------------------------------------------------------------
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let N: vec3<f32> = safe_normalize(in.world_normal);
     let V: vec3<f32> = safe_normalize(scene_uniforms.camera_position - in.world_position); // View Vector
 
-    var base_diffuse_albedo = material_params.diffuse_color.rgb;
-    // Optional: Diffuse texture lookup
-    // if (/* has_diffuse_texture */) {
-    //     base_diffuse_albedo = textureSample(diffuse_texture, material_sampler, in.uv).rgb * material_params.diffuse_color.rgb;
-    // }
+    let base_diffuse_albedo = 
+        textureSample(diffuse_texture, material_sampler, in.uv).rgb 
+        * material_params.diffuse_color.rgb;
 
     var direct_lighting_diffuse_specular = vec3<f32>(0.0); // Accumulator for direct diffuse and specular
     var accumulated_ambient_from_lights = vec3<f32>(0.0);  // For LightType.Ambient
@@ -136,7 +133,6 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
                 direct_lighting_diffuse_specular += (effective_light_color * material_params.specular_color.rgb * specular_factor);
             }
         } else if (L_info.lightType == 2u) { // LightType.Directional
-            // Assuming light shines along its local -Z axis from your previous shader
             let light_direction_to_surface = safe_normalize(vec3<f32>(-L_info.matrix[2][0], -L_info.matrix[2][1], -L_info.matrix[2][2]));
             let L = safe_normalize(-light_direction_to_surface);
             let effective_light_color = light_color_final;
