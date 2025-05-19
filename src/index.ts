@@ -3,6 +3,7 @@ export { Color } from "./color";
 export { Scene } from "./scene";
 export { Skybox } from "./skybox";
 export { Transform } from "./transform";
+export { OrbitControls } from "./orbit-controls";
 
 export * as camera from "./camera";
 export * as geometry from "./geometry";
