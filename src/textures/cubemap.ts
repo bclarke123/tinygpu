@@ -80,7 +80,7 @@ export class Cubemap {
         });
 
         if (generateMipmaps && ret.mipLevelCount > 1 && ret.cubemapTexture.texture) {
-            Mipmap.generate(renderer, ret.cubemapTexture, width, height, ret.mipLevelCount);
+            Mipmap.generate(renderer, ret.cubemapTexture, width, height, ret.mipLevelCount, 6);
         }
 
         return ret;

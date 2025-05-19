@@ -15,7 +15,7 @@ export class Mipmap {
             // Input: previous mip level (texture_2d)
             // Output: current mip level (texture_storage_2d)
             Mipmap.shaderModule = device.createShaderModule({
-                label: "Cubemap Mipmap Compute Shader",
+                label: "Mipmap Compute Shader",
                 code: mipmapShader,
             });
         }
@@ -24,10 +24,11 @@ export class Mipmap {
 
     public static generate(
         renderer: Renderer,
-        cubemapWrapper: Texture, // Your Texture wrapper for the cubemap
+        sourceTexture: Texture,
         baseWidth: number,
         baseHeight: number,
-        mipLevelCount: number
+        mipLevelCount: number,
+        layerCount: number = 1
     ) {
 
         // console.log(`Generating ${mipLevelCount} mip levels`);
@@ -35,7 +36,7 @@ export class Mipmap {
 
         const device = renderer.device;
         const mipmapShader = Mipmap.getMipmapComputeShader(device);
-        const gpuTexture = cubemapWrapper.texture!; // Assuming .texture gives the GPUTexture
+        const gpuTexture = sourceTexture.texture!;
 
         let currentWidth = baseWidth;
         let currentHeight = baseHeight;
@@ -53,14 +54,14 @@ export class Mipmap {
 
             // console.log(`Generating ${nextWidth}x${nextHeight}`);
 
-            for (let layer = 0; layer < 6; layer++) { // For each face of the cubemap
+            for (let layer = 0; layer < layerCount; layer++) {
 
                 // console.log(`Generating Mip ${mipLevel}, Face ${layer}: ` +
                 //     `Reading from Mip ${prevMipLevel}, ` +
                 //     `Output Size: ${nextWidth}x${nextHeight}`);
 
                 const sourceTextureItem: UniformTextureItem = {
-                    texture: cubemapWrapper, // Pass your Texture wrapper
+                    texture: sourceTexture, // Pass your Texture wrapper
                     accessType: "sample", // Implies read-only for sampling
                     viewDescriptor: { // THIS IS THE KEY PART
                         label: `Mipmap Source View (L${prevMipLevel}, F${layer})`,
@@ -74,7 +75,7 @@ export class Mipmap {
                 };
 
                 const destinationTextureItem: UniformTextureItem = {
-                    texture: cubemapWrapper, // Pass your Texture wrapper
+                    texture: sourceTexture, // Pass your Texture wrapper
                     accessType: "write-only", // Implies storage texture for writing
                     // format: "rgba8unorm", // GPUStorageTextureFormat - ensure it matches textureStore in shader
                     viewDescriptor: { // THIS IS THE KEY PART
