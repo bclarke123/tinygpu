@@ -4,7 +4,9 @@ import { ComputeTaskOptions } from "../compute/compute-task";
 import { Renderer } from "../renderer";
 import { UniformSamplerItem, UniformTextureItem } from "../uniform-manager";
 import { DefaultCubemapTexture } from "./default-cubemap";
-import { ImageTexture, MappedTexture, Texture } from "./texture";
+import { Texture } from "./texture";
+import { ImageTexture } from "./image-texture";
+import { MappedTexture } from "./mapped-texture";
 
 export class Cubemap {
     posx: ImageTexture;
