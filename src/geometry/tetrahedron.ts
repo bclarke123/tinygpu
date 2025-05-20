@@ -1,187 +1,238 @@
 import { Renderer } from "../renderer";
 import { Geometry } from "./geometry";
-
-// Helper functions (assuming these are available or local)
-function crossProduct(a: [number, number, number], b: [number, number, number]): [number, number, number] {
-    return [
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    ];
-}
-
-function normalize(v: [number, number, number]): [number, number, number] {
-    const length = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    if (length === 0) return [0, 0, 0];
-    return [v[0] / length, v[1] / length, v[2] / length];
-}
-
-function subtract(a: [number, number, number], b: [number, number, number]): [number, number, number] {
-    return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-}
+import { vec3, Vec3 } from "wgpu-matrix"; // Using wgpu-matrix
 
 interface TetrahedronGeometryData {
-    vertices: Float32Array;
-    indices: Uint16Array;
-    vertexCount: number; // Number of entries in the vertices Float32Array
-    indexCount: number;
-    arrayStride: number;
-    floatsPerVertex: number;
+  vertices: Float32Array;
+  indices: Uint16Array;
+  vertexCount: number;
+  indexCount: number;
+  arrayStride: number;
+  floatsPerVertex: number;
 }
 
 // Define the 4 unique vertex positions for a tetrahedron
-// These are standard positions for a regular tetrahedron centered at the origin.
-const TETRA_POSITIONS: Array<[number, number, number]> = [
-    [1, 1, 1],    // 0
-    [1, -1, -1],   // 1
-    [-1, 1, -1],  // 2
-    [-1, -1, 1]   // 3
+const TETRA_BASE_POSITIONS: Array<Vec3> = [
+  vec3.fromValues(1, 1, 1),
+  vec3.fromValues(1, -1, -1),
+  vec3.fromValues(-1, 1, -1),
+  vec3.fromValues(-1, -1, 1),
 ];
 
 // Vertex normals for a smooth regular tetrahedron are just the normalized positions
-// if it's centered at the origin.
-const TETRA_SMOOTH_NORMALS: Array<[number, number, number]> = TETRA_POSITIONS.map(
-    pos => normalize(pos)
+const TETRA_SMOOTH_NORMALS: Array<Vec3> = TETRA_BASE_POSITIONS.map((pos) =>
+  vec3.normalize(pos, vec3.create()),
 );
 
+/**
+ * Generates an arbitrary tangent vector perpendicular to the given normal vector.
+ * @param normal The normal vector. Must be normalized.
+ * @param out The Vec3 to store the result in.
+ * @returns The `out` vector.
+ */
+function generateArbitraryTangent(normal: Readonly<Vec3>, out: Vec3): Vec3 {
+  const xAxis: Vec3 = vec3.fromValues(1, 0, 0);
+  const yAxis: Vec3 = vec3.fromValues(0, 1, 0);
+
+  if (Math.abs(vec3.dot(normal, xAxis)) > 0.9999) {
+    vec3.cross(normal, yAxis, out);
+  } else {
+    vec3.cross(normal, xAxis, out);
+  }
+  return vec3.normalize(out, out);
+}
 
 function _createTetrahedronGeometryData(
-    radius: number = 0.5,
-    useSmoothNormals: boolean = true
+  radius: number = 0.5,
+  useSmoothNormals: boolean = true,
 ): TetrahedronGeometryData {
-    const floatsPerVertex = 8; // position (3) + uv (2) + normal (3)
-    const arrayStride = floatsPerVertex * 4; // Bytes per vertex
+  const floatsPerVertex = 11; // position (3) + uv (2) + normal (3) + tangent (3)
+  const arrayStride = floatsPerVertex * 4;
 
-    // Scale positions by radius and adjust for a common centering if needed.
-    // The traditional tetrahedron points (1,1,1), (1,-1,-1), (-1,1,-1), (-1,-1,1)
-    // are not centered at origin if sqrt(3) is the distance from origin to vertex.
-    // For this example, we'll scale the TETRA_POSITIONS directly by a factor.
-    // A common scaling factor to make it fit within a 'radius' is more complex if radius
-    // refers to an inscribed or circumscribed sphere. Let's assume 'radius' is a general size factor for now.
-    const scale = radius / Math.sqrt(3); // Match previous scaling for consistency
+  const scale = radius / vec3.length(TETRA_BASE_POSITIONS[0]); // Scale to fit radius
+  const scaledPositions = TETRA_BASE_POSITIONS.map((p) =>
+    vec3.scale(p, scale, vec3.create()),
+  );
 
-    const scaledPositions = TETRA_POSITIONS.map(p => [p[0] * scale, p[1] * scale, p[2] * scale] as [number, number, number]);
-    // Smooth normals are independent of scale, use the pre-normalized ones.
+  const faces = [
+    {
+      posIndices: [0, 2, 1],
+      uvs: [
+        [0.5, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+      ],
+    },
+    {
+      posIndices: [0, 1, 3],
+      uvs: [
+        [0.5, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+      ],
+    },
+    {
+      posIndices: [0, 3, 2],
+      uvs: [
+        [0.5, 1.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+      ],
+    },
+    {
+      posIndices: [1, 2, 3],
+      uvs: [
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [0.5, 1.0],
+      ],
+    },
+  ];
 
-    // Define faces by indices into the TETRA_POSITIONS array
-    // Each face definition includes the vertex indices (0-3), UVs for those vertices on that face,
-    // and the calculated face normal (for flat shading).
-    const faces = [
-        // Original vertex order for faces (vA, vB, vC from your previous version)
-        // The winding order for indices will handle CCW.
-        { posIndices: [0, 2, 1], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] },
-        { posIndices: [0, 1, 3], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] },
-        { posIndices: [0, 3, 2], uvs: [[0.5, 1.0] as [number, number], [0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number]] },
-        { posIndices: [1, 2, 3], uvs: [[0.0, 0.0] as [number, number], [1.0, 0.0] as [number, number], [0.5, 1.0] as [number, number]] }, // Original: p1, p2, p3
-    ];
+  const vertexData: number[] = [];
+  const indexData: number[] = [];
+  let vertexCounter = 0;
 
-    const vertexData: number[] = [];
-    const indexData: number[] = [];
-    let vertexCounter = 0;
+  const edge1 = vec3.create();
+  const edge2 = vec3.create();
+  const faceNormal = vec3.create();
+  const calculatedTangent = vec3.create();
+  const tempTangent = vec3.create();
 
-    for (const face of faces) {
-        // Get the actual vertex positions for this face
-        const vA_pos = scaledPositions[face.posIndices[0]];
-        const vB_pos = scaledPositions[face.posIndices[1]];
-        const vC_pos = scaledPositions[face.posIndices[2]];
+  for (const face of faces) {
+    const pA_idx = face.posIndices[0];
+    const pB_idx = face.posIndices[1];
+    const pC_idx = face.posIndices[2];
 
-        // Calculate face normal (used if useSmoothNormals is false)
-        const edge1 = subtract(vB_pos, vA_pos);
-        const edge2 = subtract(vC_pos, vA_pos);
-        // The normal calculation needs to match the final winding order of indices.
-        // If final indices are (idx, idx+2, idx+1) for CCW (vA,vC,vB from original vertex order),
-        // then normal should be cross(vC-vA, vB-vA) = cross(edge2, edge1)
-        const faceNormal = normalize(crossProduct(edge2, edge1));
+    const vA_pos = scaledPositions[pA_idx];
+    const vB_pos = scaledPositions[pB_idx];
+    const vC_pos = scaledPositions[pC_idx];
 
-        const faceVertices = [
-            { posIdx: face.posIndices[0], uv: face.uvs[0] }, // vA
-            { posIdx: face.posIndices[1], uv: face.uvs[1] }, // vB
-            { posIdx: face.posIndices[2], uv: face.uvs[2] }, // vC
-        ];
+    const uvA = face.uvs[0];
+    const uvB = face.uvs[1];
+    const uvC = face.uvs[2];
 
-        for (const vert of faceVertices) {
-            const position = scaledPositions[vert.posIdx];
-            const uv = vert.uv;
-            const normal = useSmoothNormals ? TETRA_SMOOTH_NORMALS[vert.posIdx] : faceNormal;
-            vertexData.push(...position, ...uv, ...normal);
-        }
+    // Calculate face normal (for flat shading or as a basis if smooth normals are different)
+    // Winding order for indices is (idx, idx+2, idx+1) which corresponds to (vA, vC, vB)
+    // So normal is cross(vC-vA, vB-vA)
+    vec3.subtract(vC_pos, vA_pos, edge1); // Edge AC
+    vec3.subtract(vB_pos, vA_pos, edge2); // Edge AB
+    vec3.cross(edge1, edge2, faceNormal);
+    vec3.normalize(faceNormal, faceNormal);
 
-        // Winding order for CCW based on the original face.verts = [vA, vB, vC]
-        // If we want CCW for (vA, vC, vB) which matches the normal = cross(edge2, edge1)
-        indexData.push(vertexCounter + 0, vertexCounter + 2, vertexCounter + 1);
-        vertexCounter += 3; // 3 vertices per face
+    // Calculate tangent for the face (vA, vB, vC as per original UV mapping)
+    // For tangent: use (vA, vB, vC)
+    vec3.subtract(vB_pos, vA_pos, edge1); // Edge AB for tangent
+    vec3.subtract(vC_pos, vA_pos, edge2); // Edge AC for tangent
+
+    const deltaUV1x = uvB[0] - uvA[0];
+    const deltaUV1y = uvB[1] - uvA[1];
+    const deltaUV2x = uvC[0] - uvA[0];
+    const deltaUV2y = uvC[1] - uvA[1];
+
+    const r = 1.0 / (deltaUV1x * deltaUV2y - deltaUV2x * deltaUV1y);
+    if (isFinite(r)) {
+      calculatedTangent[0] = r * (deltaUV2y * edge1[0] - deltaUV1y * edge2[0]);
+      calculatedTangent[1] = r * (deltaUV2y * edge1[1] - deltaUV1y * edge2[1]);
+      calculatedTangent[2] = r * (deltaUV2y * edge1[2] - deltaUV1y * edge2[2]);
+      vec3.normalize(calculatedTangent, calculatedTangent);
+    } else {
+      generateArbitraryTangent(faceNormal, calculatedTangent);
     }
 
-    const vertices = new Float32Array(vertexData);
-    const indices = new Uint16Array(indexData);
-    // vertexCount is the total number of vertex entries in the buffer, which is 4 faces * 3 vertices/face = 12
-    const generatedVertexCount = 12;
+    const faceVerticesData = [
+      { posIdx: pA_idx, uv: uvA },
+      { posIdx: pB_idx, uv: uvB },
+      { posIdx: pC_idx, uv: uvC },
+    ];
 
-    return {
-        vertices,
-        indices,
-        vertexCount: generatedVertexCount,
-        indexCount: indices.length,
-        arrayStride,
-        floatsPerVertex,
-    };
+    for (const vert of faceVerticesData) {
+      const position = scaledPositions[vert.posIdx];
+      const uv = vert.uv;
+      const normal = useSmoothNormals
+        ? TETRA_SMOOTH_NORMALS[vert.posIdx]
+        : faceNormal;
+
+      // Orthogonalize tangent
+      const NdotT = vec3.dot(normal, calculatedTangent);
+      vec3.scale(normal, NdotT, tempTangent);
+      vec3.subtract(calculatedTangent, tempTangent, tempTangent);
+      vec3.normalize(tempTangent, tempTangent);
+
+      if (vec3.length(tempTangent) < 0.0001) {
+        generateArbitraryTangent(normal, tempTangent);
+      }
+      vertexData.push(...position, ...uv, ...normal, ...tempTangent);
+    }
+    // Winding order for CCW based on original face.verts = [vA, vB, vC]
+    // If normal is cross(vC-vA, vB-vA), then indices are (vA, vC, vB)
+    indexData.push(vertexCounter + 0, vertexCounter + 2, vertexCounter + 1);
+    vertexCounter += 3;
+  }
+
+  const vertices = new Float32Array(vertexData);
+  const indices = new Uint16Array(indexData);
+  const generatedVertexCount = 12; // 4 faces * 3 vertices/face
+
+  return {
+    vertices,
+    indices,
+    vertexCount: generatedVertexCount,
+    indexCount: indices.length,
+    arrayStride,
+    floatsPerVertex,
+  };
 }
 
 export interface TetrahedronGeometryOptions {
-    radius?: number;
-    useSmoothNormals?: boolean;
+  radius?: number;
+  useSmoothNormals?: boolean;
 }
 
 export class TetrahedronGeometry extends Geometry {
-    private readonly _arrayStride: number;
-    private readonly _radius: number;
-    private readonly _useSmoothNormals: boolean;
+  private readonly _arrayStride: number;
+  private readonly _radius: number;
+  private readonly _useSmoothNormals: boolean;
 
-    constructor(renderer: Renderer, options: TetrahedronGeometryOptions = {}) {
-        const radius = options.radius !== undefined ? options.radius : 0.5;
-        const useSmoothNormals = options.useSmoothNormals !== undefined ? options.useSmoothNormals : true; // Default to true
+  constructor(renderer: Renderer, options: TetrahedronGeometryOptions = {}) {
+    const radius = options.radius !== undefined ? options.radius : 0.5;
+    const useSmoothNormals =
+      options.useSmoothNormals !== undefined ? options.useSmoothNormals : true;
 
-        const { vertices, indices, vertexCount, indexCount, arrayStride } =
-            _createTetrahedronGeometryData(radius, useSmoothNormals);
+    const { vertices, indices, vertexCount, indexCount, arrayStride } =
+      _createTetrahedronGeometryData(radius, useSmoothNormals);
 
-        const vertexGPUBuffer = renderer.createBuffer(
-            vertices,
-            GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-        );
-        const indexGPUBuffer = renderer.createBuffer(
-            indices,
-            GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-        );
+    const vertexGPUBuffer = renderer.createBuffer(
+      vertices,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+    );
+    const indexGPUBuffer = renderer.createBuffer(
+      indices,
+      GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    );
 
-        super(
-            renderer,
-            vertexGPUBuffer,
-            indexGPUBuffer,
-            indexCount,
-            vertexCount, // This is the number of vertices in the buffer to draw
-        );
+    super(renderer, vertexGPUBuffer, indexGPUBuffer, indexCount, vertexCount);
 
-        this._arrayStride = arrayStride;
-        this._radius = radius;
-        this._useSmoothNormals = useSmoothNormals;
-    }
+    this._arrayStride = arrayStride;
+    this._radius = radius;
+    this._useSmoothNormals = useSmoothNormals;
+  }
 
-    get cacheKey(): string {
-        // Ensure radius is part of the key if it affects geometry significantly beyond simple scaling
-        // (which it does here as it's used in vertex position calculation)
-        return `TetrahedronGeometry_r${this._radius}_smooth:${this._useSmoothNormals}`;
-    }
+  get cacheKey(): string {
+    return `TetrahedronGeometry_r${this._radius}_smooth:${this._useSmoothNormals}_tangents_v1`;
+  }
 
-    get bufferLayout(): GPUVertexBufferLayout[] {
-        return [
-            {
-                arrayStride: this._arrayStride,
-                attributes: [
-                    { shaderLocation: 0, offset: 0, format: "float32x3" }, // Position
-                    { shaderLocation: 1, offset: 3 * 4, format: "float32x2" }, // UV
-                    { shaderLocation: 2, offset: (3 + 2) * 4, format: "float32x3" }, // Normal
-                ],
-            },
-        ];
-    }
+  get bufferLayout(): GPUVertexBufferLayout[] {
+    return [
+      {
+        arrayStride: this._arrayStride, // 44
+        attributes: [
+          { shaderLocation: 0, offset: 0, format: "float32x3" }, // Position
+          { shaderLocation: 1, offset: 3 * 4, format: "float32x2" }, // UV
+          { shaderLocation: 2, offset: (3 + 2) * 4, format: "float32x3" }, // Normal
+          { shaderLocation: 3, offset: (3 + 2 + 3) * 4, format: "float32x3" }, // Tangent
+        ],
+      },
+    ];
+  }
 }
