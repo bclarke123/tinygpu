@@ -15,6 +15,10 @@ import { Scene } from "./scene";
 import { ComputeTask, ComputeTaskOptions } from "./compute/compute-task";
 import { ImageTexture, MappedTexture } from "./textures";
 import { UniformBufferItem } from "./uniform-manager";
+import {
+  DebugVectorMaterial,
+  DebugVectorMaterialOptions,
+} from "./materials/debug-vector";
 
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
@@ -250,6 +254,54 @@ export class Renderer {
     return pipeline;
   }
 
+  private getDebugVectorPipeline(
+    scene: Scene,
+    mesh: Mesh,
+    debugMaterial: DebugVectorMaterial,
+  ): GPURenderPipeline {
+    const cacheKey = `debug-vector-${mesh.geometry.cacheKey}-${debugMaterial.cacheKey}`;
+    if (this._pipelineCache.has(cacheKey)) {
+      return this._pipelineCache.get(cacheKey)!;
+    }
+
+    const layout = this.device.createPipelineLayout({
+      label: "Debug Vector Pipeline Layout",
+      bindGroupLayouts: [
+        scene.bindGroupLayout,
+        mesh.bindGroupLayout,
+        debugMaterial.bindGroupLayout,
+      ],
+    });
+
+    const pipeline = this.device.createRenderPipeline({
+      label: "Debug Vector Pipeline",
+      layout,
+      vertex: {
+        module: mesh.debugVisualizer.material.shaderCode,
+        entryPoint: "vs_main",
+      },
+      fragment: {
+        module: mesh.debugVisualizer.material.shaderCode,
+        entryPoint: "fs_main",
+        targets: [{ format: this.format }],
+      },
+      primitive: {
+        topology: "line-list",
+        frontFace: "ccw",
+        cullMode: "none",
+      },
+      depthStencil: {
+        depthWriteEnabled: false,
+        depthCompare: "always",
+        format: this.depthFormat,
+      },
+      multisample: this.antialias ? { count: this.samples } : undefined,
+    });
+
+    this._pipelineCache.set(cacheKey, pipeline);
+    return pipeline;
+  }
+
   render(scene: Scene, camera: Camera) {
     const [width, height] = this.canvasSize;
 
@@ -316,6 +368,23 @@ export class Renderer {
 
         passEncoder.setIndexBuffer(mesh.geometry.indexBuffer, "uint16");
         passEncoder.drawIndexed(mesh.geometry.indexCount, mesh.instanceCount);
+
+        if (mesh.debugVisualizer) {
+          const debugMaterial = mesh.debugVisualizer.material;
+          if (debugMaterial.geometryToVisualize !== mesh.geometry) {
+            console.warn(
+              "DebugVectorMaterial is visualizing a different geometry than the mesh it's attached to.",
+            );
+          }
+          const debugPipeline = this.getDebugVectorPipeline(
+            scene,
+            mesh,
+            debugMaterial,
+          );
+          passEncoder.setPipeline(debugPipeline);
+          passEncoder.setBindGroup(2, debugMaterial.bindGroup!);
+          passEncoder.draw(mesh.geometry.vertexCount * 2, 1, 0, 0);
+        }
       }
     });
 
@@ -422,5 +491,13 @@ export class Renderer {
 
   createComputeTask(options: ComputeTaskOptions): ComputeTask {
     return new ComputeTask(this.device, options);
+  }
+
+  public createDebugVectorMaterial(
+    options: DebugVectorMaterialOptions,
+  ): DebugVectorMaterial {
+    if (!this.device)
+      throw new Error("Device not initialized for createDebugVectorMaterial");
+    return new DebugVectorMaterial(this.device, options);
   }
 }
