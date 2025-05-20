@@ -3,6 +3,11 @@ import { Geometry } from "./geometry/geometry";
 import { Material } from "./materials/material";
 import { Transform } from "./transform";
 import { UniformBufferItem, UniformManager } from "./uniform-manager";
+import { DebugVectorMaterial } from "./materials/debug-vector";
+
+export interface DebugVisualizer {
+  material: DebugVectorMaterial;
+}
 
 export class Mesh extends Transform {
   private _uniformManager: UniformManager;
@@ -10,12 +15,14 @@ export class Mesh extends Transform {
   private _normalMatrix: Mat3;
 
   cullMode: GPUCullMode = "back";
-
   depthWriteEnabled: boolean = true;
   depthCompare: GPUCompareFunction = "less";
 
   material: Material;
   geometry: Geometry;
+
+  // Optional property for debug visualization
+  public debugVisualizer?: DebugVisualizer;
 
   constructor(
     device: GPUDevice,
@@ -28,9 +35,7 @@ export class Mesh extends Transform {
     this.material = mat;
     this.geometry = geo;
     this._instances = instances;
-
     this._normalMatrix = mat3.identity();
-
     this.updateNormalMatrix();
 
     this._uniformManager = new UniformManager(device, {
@@ -44,11 +49,16 @@ export class Mesh extends Transform {
   }
 
   get cacheKey(): string {
-    return `${this.geometry.cacheKey}-${this.material.cacheKey}-${this._uniformManager.cacheKey}-${this.depthWriteEnabled}-${this.depthCompare}`;
+    let key = `${this.geometry.cacheKey}-${this.material.cacheKey}-${this._uniformManager.cacheKey}-${this.depthWriteEnabled}-${this.depthCompare}`;
+    if (this.debugVisualizer) {
+      key += `-${this.debugVisualizer.material.cacheKey}`;
+    }
+    return key;
   }
 
   update() {
     this.material.update();
+    this.debugVisualizer?.material.update();
 
     this.updateNormalMatrix();
 
@@ -56,16 +66,15 @@ export class Mesh extends Transform {
       name: "model",
       value: this.worldMatrix,
     });
-
     this._uniformManager.updateUniform({
       name: "normalMatrix",
       value: this._normalMatrix,
     });
-
     this._uniformManager.update();
   }
 
   updateNormalMatrix() {
+    // Ensure this.worldMatrix is a Mat4 before calling fromMat4
     mat3.fromMat4(this.worldMatrix, this._normalMatrix);
     mat3.invert(this._normalMatrix, this._normalMatrix);
     mat3.transpose(this._normalMatrix, this._normalMatrix);
