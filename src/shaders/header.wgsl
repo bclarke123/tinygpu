@@ -36,6 +36,7 @@ struct VSIn {
   @location(0) position: vec3f,
   @location(1) uv: vec2f,
   @location(2) normal: vec3f,
+  @location(3) tangent: vec3f,
 }
 
 @group(BG_SCENE) @binding(0) var<uniform> scene_uniforms: SceneUniforms;
