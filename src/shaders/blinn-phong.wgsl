@@ -1,8 +1,5 @@
-// blinn_phong_material.wgsl
-// Assumes header.wgsl is prepended or included for SceneUniforms, ModelUniforms, VSIn.
-
 //--------------------------------------------------------------------
-// Light structure (as defined in your light.ts)
+// Light structure
 //--------------------------------------------------------------------
 struct ShaderLight {
     matrix: mat4x4<f32>,      // Light's world matrix
@@ -10,7 +7,7 @@ struct ShaderLight {
     color: vec4<f32>,
     intensity: f32,
     range: f32,
-    lightType: u32,           // 0: Ambient, 1: Point, 2: Directional (consistent with LightType enum)
+    light_type: u32,           // 0: Ambient, 1: Point, 2: Directional (consistent with light_type enum)
     enabled: u32,             // 1 if enabled, 0 if not
     radius: f32,              // For point light area approx. (not used in this Blinn-Phong)
 };
@@ -24,7 +21,6 @@ struct ShaderLight {
 
 // --- NEW IBL Bindings (within BG_SCENE group, adjust binding indices as needed) ---
 // Assuming binding 0 is scene_uniforms, and binding 4 is lights_array.
-// If your current cubemap sampler and texture are at 1 and 2 in BG_SCENE:
 @group(BG_SCENE) @binding(1) var environment_map_sampler: sampler;
 @group(BG_SCENE) @binding(2) var environment_map_texture: texture_cube<f32>;
 @group(BG_SCENE) @binding(4) var<storage, read> lights_array: array<ShaderLight>;
@@ -43,9 +39,8 @@ struct BlinnPhongMaterialParams {
 };
 
 @group(BG_UNIFORMS) @binding(0) var<uniform> material_params: BlinnPhongMaterialParams;
-// Optional: Texture for diffuse color
-// @group(BG_UNIFORMS) @binding(1) var material_sampler: sampler;
-// @group(BG_UNIFORMS) @binding(2) var diffuse_texture: texture_2d<f32>;
+@group(BG_UNIFORMS) @binding(1) var material_sampler: sampler;
+@group(BG_UNIFORMS) @binding(2) var diffuse_texture: texture_2d<f32>;
 
 //--------------------------------------------------------------------
 // Vertex Shader Output (VSOut)
@@ -58,7 +53,7 @@ struct VSOut {
 };
 
 //--------------------------------------------------------------------
-// Vertex Shader (vs_main) - (Assumed to be correct and unchanged from your provided file)
+// Vertex Shader (vs_main)
 //--------------------------------------------------------------------
 @vertex
 fn vs_main(in: VSIn) -> VSOut {
@@ -83,21 +78,19 @@ fn safe_normalize(v: vec3<f32>) -> vec3<f32> {
 }
 
 //--------------------------------------------------------------------
-// Fragment Shader (fs_main) - MODIFIED for IBL
+// Fragment Shader (fs_main)
 //--------------------------------------------------------------------
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let N: vec3<f32> = safe_normalize(in.world_normal);
     let V: vec3<f32> = safe_normalize(scene_uniforms.camera_position - in.world_position); // View Vector
 
-    var base_diffuse_albedo = material_params.diffuse_color.rgb;
-    // Optional: Diffuse texture lookup
-    // if (/* has_diffuse_texture */) {
-    //     base_diffuse_albedo = textureSample(diffuse_texture, material_sampler, in.uv).rgb * material_params.diffuse_color.rgb;
-    // }
+    let base_diffuse_albedo = 
+        textureSample(diffuse_texture, material_sampler, in.uv).rgb 
+        * material_params.diffuse_color.rgb;
 
     var direct_lighting_diffuse_specular = vec3<f32>(0.0); // Accumulator for direct diffuse and specular
-    var accumulated_ambient_from_lights = vec3<f32>(0.0);  // For LightType.Ambient
+    var accumulated_ambient_from_lights = vec3<f32>(0.0);  // For light_type.Ambient
 
     // --- DIRECT LIGHTING LOOP ---
     for (var i: u32 = 0u; i < scene_uniforms.numLights; i = i + 1u) {
@@ -106,9 +99,9 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 
         let light_color_final = L_info.color.rgb * L_info.intensity;
 
-        if (L_info.lightType == 0u) { // LightType.Ambient
+        if (L_info.light_type == 0u) { // light_type.Ambient
             accumulated_ambient_from_lights += light_color_final;
-        } else if (L_info.lightType == 1u) { // LightType.Point
+        } else if (L_info.light_type == 1u) { // light_type.Point
             let light_world_pos = L_info.matrix[3].xyz;
             let light_vector = light_world_pos - in.world_position;
             let distance_to_light = length(light_vector);
@@ -135,8 +128,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
                 // Use material_params.specular_color.rgb for direct light specular highlights
                 direct_lighting_diffuse_specular += (effective_light_color * material_params.specular_color.rgb * specular_factor);
             }
-        } else if (L_info.lightType == 2u) { // LightType.Directional
-            // Assuming light shines along its local -Z axis from your previous shader
+        } else if (L_info.light_type == 2u) { // light_type.Directional
             let light_direction_to_surface = safe_normalize(vec3<f32>(-L_info.matrix[2][0], -L_info.matrix[2][1], -L_info.matrix[2][2]));
             let L = safe_normalize(-light_direction_to_surface);
             let effective_light_color = light_color_final;
