@@ -32,6 +32,7 @@ export class Color {
   }
 
   toString() {
+    this.uniformValue();
     return this.buffer.join(",");
   }
 }
