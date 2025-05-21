@@ -36,6 +36,9 @@
 
                 const controls = new tinygpu.OrbitControls(camera, canvas);
 
+                const normals =
+                    await renderer.loadImageTexture("./normal_map.webp");
+
                 const cubemap = await tinygpu.textures.Cubemap.createFromFiles(
                     renderer,
                     "./cubemap/posx.webp",
@@ -50,7 +53,13 @@
                 scene.background = cubemap;
                 scene.environment = cubemap;
 
-                const createMesh = (geoType, shininess, reflectivity = 0.7) => {
+                const createMesh = (
+                    geoType,
+                    shininess,
+                    metalness = 1,
+                    reflectivity = 0.7,
+                    useNormalMap = true,
+                ) => {
                     const geo = renderer.createGeometry(geoType, {
                         useSmoothNormals: false,
                     });
@@ -62,8 +71,9 @@
                             specularColor: new tinygpu.Color(1, 1, 1),
                             shininess,
                             reflectivity,
-                            metalness: 1.0,
+                            metalness,
                             envMapIntensity: 1.0,
+                            normalMap: useNormalMap ? normals : undefined,
                         },
                     );
                     const mesh = renderer.createMesh(geo, mat);
@@ -103,7 +113,8 @@
                 const cube = createMesh(
                     tinygpu.geometry.CubeGeometry,
                     10.0,
-                    0.3,
+                    0.1,
+                    0.0,
                 );
                 cube.setPosition(
                     Math.cos(third) * radius,
@@ -115,7 +126,9 @@
                 const tet = createMesh(
                     tinygpu.geometry.TetrahedronGeometry,
                     50.0,
+                    1,
                     0.6,
+                    false,
                 );
                 tet.setPosition(
                     Math.cos(third * 2) * radius,
