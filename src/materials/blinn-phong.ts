@@ -16,6 +16,7 @@ export interface BlinnPhongMaterialOptions {
   envMapIntensity?: number;
   metalness?: number;
   diffuseMap?: Texture;
+  normalMap?: Texture;
 }
 
 function paramValue<T, O>(options: O, key: keyof O, defaultVal: T): T {
@@ -36,18 +37,40 @@ export class BlinnPhongMaterial extends Material {
   public envMapIntensity: number;
   public metalness: number;
   public diffuseMap: Texture;
+  public normalMap: Texture;
 
   private _device: GPUDevice;
 
   constructor(device: GPUDevice, options: BlinnPhongMaterialOptions) {
-    const ambientColor = paramValue(options, "ambientColor", new Color(0.1, 0.1, 0.1));
-    const diffuseColor = paramValue(options, "diffuseColor", new Color(0.7, 0.7, 0.7));
-    const specularColor = paramValue(options, "specularColor", new Color(1.0, 1.0, 1.0));
+    const ambientColor = paramValue(
+      options,
+      "ambientColor",
+      new Color(0.1, 0.1, 0.1),
+    );
+    const diffuseColor = paramValue(
+      options,
+      "diffuseColor",
+      new Color(0.7, 0.7, 0.7),
+    );
+    const specularColor = paramValue(
+      options,
+      "specularColor",
+      new Color(1.0, 1.0, 1.0),
+    );
     const shininess = paramValue(options, "shininess", 32.0);
     const reflectivity = paramValue(options, "reflectivity", 0.0);
     const envMapIntensity = paramValue(options, "envMapIntensity", 1.0);
     const metalness = paramValue(options, "metalness", 0.0);
-    const diffuseMap = paramValue(options, "diffuseMap", DefaultTexture.getInstance(device));
+    const diffuseMap = paramValue(
+      options,
+      "diffuseMap",
+      DefaultTexture.getInstance(device),
+    );
+    const normalMap = paramValue(
+      options,
+      "normalMap",
+      DefaultTexture.getInstance(device, new Color(0.5, 0.5, 1)),
+    );
 
     const materialUniformItems: UniformItem[] = [
       { name: "ambient_color", value: ambientColor, type: "color" },
@@ -63,9 +86,7 @@ export class BlinnPhongMaterial extends Material {
     const materialUniformManager = new UniformManager(device, {
       label: "BlinnPhongMaterial_Params",
       uniforms: materialUniformItems,
-      textures: [
-        { texture: diffuseMap }
-      ]
+      textures: [{ texture: diffuseMap }, { texture: normalMap }],
     });
 
     super(materialUniformManager); // Pass it to the base Material constructor
@@ -80,6 +101,7 @@ export class BlinnPhongMaterial extends Material {
     this.envMapIntensity = envMapIntensity;
     this.metalness = metalness;
     this.diffuseMap = diffuseMap;
+    this.normalMap = normalMap;
   }
 
   // Implement abstract members from Material base class
