@@ -287,10 +287,13 @@ export class UniformManager {
     }
 
     if (_buffers?.length > 0) {
+      const defaultVis = this._compute
+        ? GPUShaderStage.COMPUTE
+        : GPUShaderStage.FRAGMENT;
       for (let i = 0; i < _buffers?.length; i++) {
         entries.push({
           binding,
-          visibility: _buffers[i].visibility,
+          visibility: _buffers[i].visibility || defaultVis,
           buffer: { type: _buffers[i].type },
         });
 
