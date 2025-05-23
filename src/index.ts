@@ -5,6 +5,7 @@ export { Skybox } from "./skybox";
 export { Transform } from "./transform";
 export { OrbitControls } from "./orbit-controls";
 export { packUniforms, uploadUniformBuffer, UniformItem, UniformValue } from "./uniform-utils";
+export { UniformManager, UniformManagerOptions, UniformBufferItem, UniformSamplerItem, UniformTextureItem } from "./uniform-manager";
 
 export * as camera from "./camera";
 export * as geometry from "./geometry";
