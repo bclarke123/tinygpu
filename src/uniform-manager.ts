@@ -1,356 +1,396 @@
-import { Texture } from "./textures";
-import { packUniforms, UniformItem, uploadUniformBuffer } from "./uniform-utils";
+import { Texture, VideoTexture } from "./textures";
+import {
+  packUniforms,
+  UniformItem,
+  uploadUniformBuffer,
+} from "./uniform-utils";
 
 export interface UniformBufferAttribute {
-    offset: number;
-    format: string;
+  offset: number;
+  format: string;
 }
 
 export interface UniformBufferItem {
-    type: GPUBufferBindingType;
-    buffer: GPUBuffer;
-    attributes?: UniformBufferAttribute[];
-    visibility?: GPUShaderStageFlags;
-    stepMode?: GPUVertexStepMode;
-    stride?: number;
+  type: GPUBufferBindingType;
+  buffer: GPUBuffer;
+  attributes?: UniformBufferAttribute[];
+  visibility?: GPUShaderStageFlags;
+  stepMode?: GPUVertexStepMode;
+  stride?: number;
 }
 
 export interface UniformTextureItem {
-    texture: Texture;
-    accessType?: GPUStorageTextureAccess | "sample";
-    visibility?: GPUShaderStageFlags;
-    format?: GPUTextureFormat;
-    dimension?: GPUTextureViewDimension;
-    viewDescriptor?: GPUTextureViewDescriptor;
+  texture: Texture | VideoTexture;
+  accessType?: GPUStorageTextureAccess | "sample";
+  visibility?: GPUShaderStageFlags;
+  format?: GPUTextureFormat;
+  dimension?: GPUTextureViewDimension;
+  viewDescriptor?: GPUTextureViewDescriptor;
 }
 
 export interface UniformSamplerItem {
-    type: GPUSamplerBindingType;
-    visibility?: GPUShaderStageFlags;
-    sampler: GPUSampler;
+  type: GPUSamplerBindingType;
+  visibility?: GPUShaderStageFlags;
+  sampler: GPUSampler;
 }
 
 export interface UniformManagerOptions {
-    uniforms?: UniformItem[];
-    textures?: UniformTextureItem[];
-    buffers?: UniformBufferItem[];
-    samplers?: UniformSamplerItem[];
-    label?: string;
-    uniformVisibility?: GPUShaderStageFlags;
-    compute?: boolean;
+  uniforms?: UniformItem[];
+  textures?: UniformTextureItem[];
+  buffers?: UniformBufferItem[];
+  samplers?: UniformSamplerItem[];
+  label?: string;
+  uniformVisibility?: GPUShaderStageFlags;
+  compute?: boolean;
 }
 
 export class UniformManager {
-    private _device: GPUDevice;
-    public _uniforms?: UniformItem[];
-    private _textures?: UniformTextureItem[];
-    private _buffers?: UniformBufferItem[];
+  private _device: GPUDevice;
+  public _uniforms?: UniformItem[];
+  private _textures?: UniformTextureItem[];
+  private _buffers?: UniformBufferItem[];
 
-    private _uniformsDirty = true;
-    private _texturesDirty = true;
-    private _buffersDirty = true;
+  private _uniformsDirty = true;
+  private _texturesDirty = true;
+  private _buffersDirty = true;
 
-    private _compute = false;
+  private _compute = false;
 
-    public _uniformArr: ArrayBuffer;
-    private _uniformBuffer: GPUBuffer;
+  public _uniformArr: ArrayBuffer;
+  private _uniformBuffer: GPUBuffer;
 
-    private _bindGroup: GPUBindGroup;
-    private _bindGroupLayout: GPUBindGroupLayout;
+  private _bindGroup: GPUBindGroup;
+  private _bindGroupLayout: GPUBindGroupLayout;
 
-    private _samplers: UniformSamplerItem[];
+  private _samplers: UniformSamplerItem[];
 
-    private _label: string;
-    private _cacheKey: string;
+  private _label: string;
+  private _cacheKey: string;
 
-    private uniformVisibility: GPUShaderStageFlags = GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT;
+  private uniformVisibility: GPUShaderStageFlags =
+    GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT;
 
-    constructor(device: GPUDevice, options: UniformManagerOptions) {
-        this._device = device;
+  constructor(device: GPUDevice, options: UniformManagerOptions) {
+    this._device = device;
 
-        const { uniforms, textures, buffers, samplers, label, uniformVisibility, compute } = options;
+    const {
+      uniforms,
+      textures,
+      buffers,
+      samplers,
+      label,
+      uniformVisibility,
+      compute,
+    } = options;
 
-        this._uniforms = uniforms;
-        this._textures = textures;
-        this._buffers = buffers;
-        this._samplers = samplers;
+    this._uniforms = uniforms;
+    this._textures = textures;
+    this._buffers = buffers;
+    this._samplers = samplers;
 
-        this._label = label;
-        this._uniformsDirty = true;
-        this._texturesDirty = true;
+    this._label = label;
+    this._uniformsDirty = true;
+    this._texturesDirty = true;
 
-        this._compute = Boolean(compute);
+    this._compute = Boolean(compute);
 
-        if (uniformVisibility) {
-            this.uniformVisibility = uniformVisibility;
-        }
-
-        // If you cannot afford a sampler, one will be appointed for you.
-        if ((this._samplers || []).length < 1 && (this._textures || []).length > 0) {
-            this._samplers = [
-                {
-                    sampler: this._device.createSampler({
-                        magFilter: "linear",
-                        minFilter: "linear",
-                    }),
-                    type: "filtering"
-                }
-            ];
-        }
+    if (uniformVisibility) {
+      this.uniformVisibility = uniformVisibility;
     }
 
-    get cacheKey() {
-        if (this._cacheKey) {
-            return this._cacheKey;
-        }
+    // If you cannot afford a sampler, one will be appointed for you.
+    if (
+      (this._samplers || []).length < 1 &&
+      (this._textures || []).length > 0
+    ) {
+      this._samplers = [
+        {
+          sampler: this._device.createSampler({
+            magFilter: "linear",
+            minFilter: "linear",
+          }),
+          type: "filtering",
+        },
+      ];
+    }
+  }
 
-        const keys = [
-            this._label,
-        ];
-
-        for (const uniform of this._uniforms || []) {
-            keys.push(uniform.name);
-        }
-
-        for (const tex of this._textures || []) {
-            keys.push(tex.texture.label);
-        }
-
-        for (const buf of this._buffers || []) {
-            keys.push(buf.buffer.label);
-        }
-
-        for (const sampler of this._samplers || []) {
-            keys.push(sampler.sampler.label);
-        }
-
-        this._cacheKey = keys.join(":");
-
-        return this._cacheKey;
+  get cacheKey() {
+    if (this._cacheKey) {
+      return this._cacheKey;
     }
 
-    updateUniform(uniform: UniformItem) {
-        const toUpdate = this._uniforms?.find((u) => u.name === uniform.name);
-        toUpdate.value = uniform.value;
-        this.setUniformsDirty();
+    const keys = [this._label];
+
+    for (const uniform of this._uniforms || []) {
+      keys.push(uniform.name);
     }
 
-    updateUniforms(uniforms?: UniformItem[]) {
-        this._uniforms = uniforms;
-        this.setUniformsDirty();
+    for (const tex of this._textures || []) {
+      keys.push(tex.texture.label);
     }
 
-    updateTextures(textures?: UniformTextureItem[]) {
-        this._textures = textures;
-        this.setTexturesDirty();
+    for (const buf of this._buffers || []) {
+      keys.push(buf.buffer.label);
     }
 
-    updateBuffers(buffers?: UniformBufferItem[]) {
-        this._buffers = buffers;
-        this.setBuffersDirty();
+    for (const sampler of this._samplers || []) {
+      keys.push(sampler.sampler.label);
     }
 
-    update() {
-        if (this._uniformsDirty) {
-            this._uniformArr = packUniforms(this._uniforms || [], this._uniformArr);
-            this._uniformBuffer = uploadUniformBuffer(this._uniformArr, this._device, this._label, this._uniformBuffer);
-            this._uniformsDirty = false;
+    this._cacheKey = keys.join(":");
+
+    return this._cacheKey;
+  }
+
+  updateUniform(uniform: UniformItem) {
+    const toUpdate = this._uniforms?.find((u) => u.name === uniform.name);
+    toUpdate.value = uniform.value;
+    this.setUniformsDirty();
+  }
+
+  updateUniforms(uniforms?: UniformItem[]) {
+    this._uniforms = uniforms;
+    this.setUniformsDirty();
+  }
+
+  updateTextures(textures?: UniformTextureItem[]) {
+    this._textures = textures;
+    this.setTexturesDirty();
+  }
+
+  updateBuffers(buffers?: UniformBufferItem[]) {
+    this._buffers = buffers;
+    this.setBuffersDirty();
+  }
+
+  update() {
+    if (this._uniformsDirty) {
+      this._uniformArr = packUniforms(this._uniforms || [], this._uniformArr);
+      this._uniformBuffer = uploadUniformBuffer(
+        this._uniformArr,
+        this._device,
+        this._label,
+        this._uniformBuffer,
+      );
+      this._uniformsDirty = false;
+    }
+
+    if (this._texturesDirty) {
+      this._bindGroup = undefined;
+      this._texturesDirty = false;
+    }
+
+    if (this._buffersDirty) {
+      this._bindGroup = undefined;
+      this._buffersDirty = false;
+    }
+  }
+
+  setTexturesDirty() {
+    this._texturesDirty = true;
+  }
+
+  setUniformsDirty() {
+    this._uniformsDirty = true;
+  }
+
+  setBuffersDirty() {
+    this._buffersDirty = true;
+  }
+
+  setDirty() {
+    this.setTexturesDirty();
+    this.setUniformsDirty();
+  }
+
+  get buffers(): UniformBufferItem[] {
+    return this._buffers;
+  }
+
+  get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor {
+    const entries = [];
+
+    let binding = 0;
+    const { _uniforms, _textures, _samplers, _buffers } = this;
+
+    if (_uniforms?.length > 0) {
+      entries.push({
+        binding: 0,
+        visibility: this.uniformVisibility,
+        buffer: {
+          type: "uniform",
+          hasDynamicOffset: false,
+          minBindingSize: 0,
+        },
+      });
+
+      binding++;
+    }
+
+    if (_samplers?.length > 0) {
+      const defaultVis = this._compute
+        ? GPUShaderStage.COMPUTE
+        : GPUShaderStage.FRAGMENT;
+      for (let i = 0; i < _samplers.length; i++) {
+        entries.push({
+          binding,
+          visibility: _samplers[i].visibility || defaultVis,
+          sampler: { type: _samplers[i].type },
+        });
+
+        binding++;
+      }
+    }
+
+    if (_textures?.length > 0) {
+      const defaultVis = this._compute
+        ? GPUShaderStage.COMPUTE
+        : GPUShaderStage.FRAGMENT;
+      for (let i = 0; i < _textures?.length; i++) {
+        const tex = _textures[i];
+        const viewDimension = tex.dimension || tex.texture.dimension;
+        const access = tex.accessType || "sample";
+
+        if (tex.texture instanceof VideoTexture) {
+          entries.push({
+            binding,
+            visibility: tex.visibility || defaultVis,
+            externalTexture: {},
+          });
+        } else if (access === "sample") {
+          entries.push({
+            binding,
+            visibility: tex.visibility || defaultVis,
+            texture: {
+              sampleType: "float",
+              viewDimension,
+              multisampled: false,
+            },
+          });
+        } else {
+          const format = tex.format || tex.texture.format;
+
+          entries.push({
+            binding,
+            visibility: tex.visibility || defaultVis,
+            storageTexture: {
+              access,
+              format,
+              viewDimension,
+            },
+          });
         }
 
-        if (this._texturesDirty) {
-            this._bindGroup = undefined;
-            this._texturesDirty = false;
-        }
-
-        if (this._buffersDirty) {
-            this._bindGroup = undefined;
-            this._buffersDirty = false;
-        }
+        binding++;
+      }
     }
 
-    setTexturesDirty() {
-        this._texturesDirty = true;
+    if (_buffers?.length > 0) {
+      for (let i = 0; i < _buffers?.length; i++) {
+        entries.push({
+          binding,
+          visibility: _buffers[i].visibility,
+          buffer: { type: _buffers[i].type },
+        });
+
+        binding++;
+      }
     }
 
-    setUniformsDirty() {
-        this._uniformsDirty = true;
+    const ret = {
+      label: `${this._label} BindGroup Layout`,
+      entries,
+    } as GPUBindGroupLayoutDescriptor;
+
+    return ret;
+  }
+
+  get bindGroupLayout(): GPUBindGroupLayout {
+    if (this._bindGroupLayout) {
+      return this._bindGroupLayout;
     }
 
-    setBuffersDirty() {
-        this._buffersDirty = true;
+    this._bindGroupLayout = this._device.createBindGroupLayout(
+      this.bindGroupLayoutDescriptor,
+    );
+
+    return this._bindGroupLayout;
+  }
+
+  get bindGroupDescriptor(): GPUBindGroupDescriptor {
+    let binding = 0;
+    const { _uniforms, _textures, _samplers, _buffers } = this;
+
+    const entries = [];
+
+    if (_uniforms?.length > 0) {
+      entries.push({
+        binding,
+        resource: { buffer: this._uniformBuffer },
+      });
+
+      binding++;
     }
 
-    setDirty() {
-        this.setTexturesDirty();
-        this.setUniformsDirty();
+    if (_samplers?.length > 0) {
+      for (let i = 0; i < _samplers.length; i++) {
+        entries.push({
+          binding,
+          resource: _samplers[i].sampler,
+        });
+
+        binding++;
+      }
     }
 
-    get buffers(): UniformBufferItem[] {
-        return this._buffers;
+    if (_textures?.length > 0) {
+      for (let i = 0; i < _textures?.length; i++) {
+        const tex = _textures[i];
+        if (tex.texture instanceof VideoTexture) {
+          entries.push({
+            binding,
+            resource: tex.texture.texture,
+          });
+        } else {
+          const tTex = tex.texture as Texture;
+          entries.push({
+            binding,
+            resource: tTex.getView(_textures[i].viewDescriptor),
+          });
+        }
+
+        binding++;
+      }
     }
 
-    get bindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor {
-        const entries = [];
+    if (_buffers?.length > 0) {
+      for (let i = 0; i < _buffers?.length; i++) {
+        entries.push({
+          binding,
+          resource: { buffer: _buffers[i].buffer },
+        });
 
-        let binding = 0;
-        const { _uniforms, _textures, _samplers, _buffers } = this;
-
-        if (_uniforms?.length > 0) {
-            entries.push({
-                binding: 0,
-                visibility: this.uniformVisibility,
-                buffer: {
-                    type: "uniform",
-                    hasDynamicOffset: false,
-                    minBindingSize: 0,
-                },
-            });
-
-            binding++;
-        }
-
-        if (_samplers?.length > 0) {
-            const defaultVis = this._compute ? GPUShaderStage.COMPUTE : GPUShaderStage.FRAGMENT;
-            for (let i = 0; i < _samplers.length; i++) {
-                entries.push({
-                    binding,
-                    visibility: _samplers[i].visibility || defaultVis,
-                    sampler: { type: _samplers[i].type },
-                });
-
-                binding++;
-            }
-        }
-
-        if (_textures?.length > 0) {
-            const defaultVis = this._compute ? GPUShaderStage.COMPUTE : GPUShaderStage.FRAGMENT;
-            for (let i = 0; i < _textures?.length; i++) {
-                const tex = _textures[i];
-                const viewDimension = tex.dimension || tex.texture.dimension;
-                const access = tex.accessType || "sample";
-
-                if (access === "sample") {
-                    entries.push({
-                        binding,
-                        visibility: tex.visibility || defaultVis,
-                        texture: {
-                            sampleType: "float",
-                            viewDimension,
-                            multisampled: false,
-                        },
-                    });
-                } else {
-                    const format = tex.format || tex.texture.format;
-
-                    entries.push({
-                        binding,
-                        visibility: tex.visibility || defaultVis,
-                        storageTexture: {
-                            access,
-                            format,
-                            viewDimension,
-                        },
-                    });
-                }
-
-                binding++;
-            }
-        }
-
-        if (_buffers?.length > 0) {
-            for (let i = 0; i < _buffers?.length; i++) {
-                entries.push({
-                    binding,
-                    visibility: _buffers[i].visibility,
-                    buffer: { type: _buffers[i].type },
-                });
-
-                binding++;
-            }
-        }
-
-        const ret = {
-            label: `${this._label} BindGroup Layout`,
-            entries,
-        } as GPUBindGroupLayoutDescriptor;
-
-        return ret;
+        binding++;
+      }
     }
 
-    get bindGroupLayout(): GPUBindGroupLayout {
-        if (this._bindGroupLayout) {
-            return this._bindGroupLayout;
-        }
+    const ret = {
+      label: `${this._label} BindGroup`,
+      layout: this.bindGroupLayout,
+      entries,
+    };
 
-        this._bindGroupLayout = this._device.createBindGroupLayout(this.bindGroupLayoutDescriptor);
+    return ret;
+  }
 
-        return this._bindGroupLayout;
+  get bindGroup(): GPUBindGroup {
+    if (this._bindGroup) {
+      return this._bindGroup;
     }
 
-    get bindGroupDescriptor(): GPUBindGroupDescriptor {
-        let binding = 0;
-        const { _uniforms, _textures, _samplers, _buffers } = this;
+    this._bindGroup = this._device.createBindGroup(this.bindGroupDescriptor);
 
-        const entries = [];
-
-        if (_uniforms?.length > 0) {
-            entries.push({
-                binding,
-                resource: { buffer: this._uniformBuffer },
-            });
-
-            binding++;
-        }
-
-        if (_samplers?.length > 0) {
-            for (let i = 0; i < _samplers.length; i++) {
-                entries.push({
-                    binding,
-                    resource: _samplers[i].sampler,
-                });
-
-                binding++;
-            }
-        }
-
-        if (_textures?.length > 0) {
-            for (let i = 0; i < _textures?.length; i++) {
-                entries.push({
-                    binding,
-                    resource: _textures[i].texture.getView(_textures[i].viewDescriptor),
-                });
-
-                binding++;
-            }
-        }
-
-        if (_buffers?.length > 0) {
-            for (let i = 0; i < _buffers?.length; i++) {
-                entries.push({
-                    binding,
-                    resource: { buffer: _buffers[i].buffer },
-                });
-
-                binding++;
-            }
-        }
-
-        const ret = {
-            label: `${this._label} BindGroup`,
-            layout: this.bindGroupLayout,
-            entries,
-        };
-
-        return ret;
-    }
-
-    get bindGroup(): GPUBindGroup {
-        if (this._bindGroup) {
-            return this._bindGroup;
-        }
-
-        this._bindGroup = this._device.createBindGroup(this.bindGroupDescriptor);
-
-        return this._bindGroup;
-    }
+    return this._bindGroup;
+  }
 }
