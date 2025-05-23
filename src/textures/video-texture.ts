@@ -28,4 +28,7 @@ export class VideoTexture {
     });
     return this._texture;
   }
+  get video(): HTMLVideoElement {
+    return this._video;
+  }
 }
