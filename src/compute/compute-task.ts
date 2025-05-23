@@ -1,11 +1,13 @@
 import { vec3, Vec3 } from "wgpu-matrix";
 import { UniformBufferItem, UniformManager, UniformSamplerItem, UniformTextureItem } from "../uniform-manager";
+import { UniformItem } from "../uniform-utils";
 
 export interface ComputeTaskOptions {
   label?: string;
   shader: GPUShaderModule;
   entryPoint?: string;
   dispatchCount: Vec3;
+  uniforms?: UniformItem[];
   buffers?: UniformBufferItem[];
   textures?: UniformTextureItem[];
   samplers?: UniformSamplerItem[];
@@ -19,6 +21,7 @@ export class ComputeTask {
     this._options = options;
     this._uniformManager = new UniformManager(device, {
       uniformVisibility: GPUShaderStage.COMPUTE,
+      uniforms: this._options.uniforms,
       buffers: this._options.buffers,
       textures: this._options.textures,
       samplers: this._options.samplers,
@@ -52,5 +55,9 @@ export class ComputeTask {
 
   get entryPoint() {
     return this._options.entryPoint;
+  }
+
+  get uniformManager() {
+    return this._uniformManager;
   }
 }
